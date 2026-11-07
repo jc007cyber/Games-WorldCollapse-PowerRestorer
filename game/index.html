@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#07070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>崩解世界 · 权能修复者 · 2026.11.07.6</title>
+<title>崩解世界 · 权能修复者 · 2026.11.07.7</title>
 <style>
 :root{
   --accent:#a86bff; --accent2:#5b2bbf; --accent-soft:rgba(168,107,255,.18);
@@ -331,7 +331,8 @@ const dist2 = (ax,ay,bx,by) => (ax-bx)**2 + (ay-by)**2;
 const angDelta = (cur,want) => ((want-cur+Math.PI*3) % TAU) - Math.PI;
 const TURN = { max:16, boostMul:2.2, slowR:.55, min:2.0, snap:.012 };
 // 全体英雄基础强化：提高输出、生存、机动性。
-const HERO_BALANCE = Object.freeze({ hp:145, damageMul:1.2, attackCooldownMul:.9, moveSpeed:102, dashCooldown:1.0 });
+const HERO_BALANCE = Object.freeze({ hp:145, damageMul:1.2, attackCooldownMul:.9, moveSpeed:102, dashCooldown:1.0,
+  passiveRegen:2, killHeal:4, eliteKillHeal:10, bossKillHeal:24, waveClearHeal:.10 });
 function angApproach(cur, want, dt, boost){
   const d = angDelta(cur, want), ad = Math.abs(d);
   if(ad < TURN.snap) return want;
@@ -1735,7 +1736,7 @@ function startPart(i){
   applyMapSize();
   G.enemies.length=0; G.bullets.length=0; G.parts.length=0; G.slashes.length=0;
   G.zones.length=0; G.ultFx.length=0; G.pickups.length=0;
-  G.key=null; G.waveInPart=0; G.waveTimer=1.0; G.phase='fight';
+  G.key=null; G.waveInPart=0; G.waveTimer=1.0; G.waveClearHealed=true; G.phase='fight';
   G.freeze=0; G.shake=0; G.flash=0; G.transit=null;
   const m=G.map, p=G.player;
   p.x = m.spawn[0]*G.arena.w; p.y = m.spawn[1]*G.arena.h;
@@ -1801,7 +1802,7 @@ function syncWaveHud(force){
 }
 function spawnWave(){
   const L=G.lv, m=G.map;
-  G.wave++; G.waveInPart++;
+  G.wave++; G.waveInPart++; G.waveClearHealed=false;
   const isLastWave = G.waveInPart >= L.wavesPerPart;
   const isLastPart = G.part >= G.partCount-1;
   let n = L.per[Math.min(G.waveInPart-1, L.per.length-1)];
@@ -1867,6 +1868,13 @@ function hurtPlayer(dmg){
   p.ult = clamp(p.ult + 4, 0, 100);
   G.shake = 10; flash('#ff2d55', .28);
   if(p.hp<=0){ p.hp=0; endLevel(false); }
+}
+function healPlayer(amount){
+  const p=G.player;
+  if(!p || !Number.isFinite(amount) || amount<=0) return 0;
+  const before=p.hp;
+  p.hp=Math.min(p.hpMax, p.hp+amount);
+  return p.hp-before;
 }
 function doAttack(p){
   const P = p.pw, A = P.atk, t=G.time;
@@ -2117,6 +2125,7 @@ function updateBattle(dt){
   if(I.skillReq){ I.skillReq=false; trySkill(p); }
   if(I.ultReq){ I.ultReq=false; tryUlt(p); }
   if(I.atk && p.atkCd<=0) doAttack(p);
+  healPlayer(HERO_BALANCE.passiveRegen*dt);
   if(p.pw.id==='life'){
     p.lifeTick -= dt;
     if(p.lifeTick<=0){ p.lifeTick = 8 - Math.min(4, G.enemies.length*.4); p.hp = Math.min(p.hpMax, p.hp+6); }
@@ -2147,6 +2156,7 @@ function updateBattle(dt){
   if(G.phase==='fight'){
     if(G.key){ updateKey(dt); }
     else if(G.enemies.length===0){
+      if(!G.waveClearHealed){ healPlayer(p.hpMax*HERO_BALANCE.waveClearHeal); G.waveClearHealed=true; }
       G.waveTimer -= dt;
       if(G.waveTimer<=0){
         if(G.waveInPart < G.lv.wavesPerPart){ spawnWave(); G.waveTimer = 1.6; }
@@ -2288,6 +2298,8 @@ function updateEnemies(dt){
     const e=G.enemies[i];
     if(e.dead || e.hp<=0){
       if(!e.dead){ G.kills++; G.player.ult=clamp(G.player.ult+7,0,100); burst(e.x,e.y-8,16,ETYPES[e.type].color,150); if(e.type==='boss') $('#bossbar').classList.remove('on'); }
+      const heal = e.type==='boss' ? HERO_BALANCE.bossKillHeal : e.type==='brute' ? HERO_BALANCE.eliteKillHeal : HERO_BALANCE.killHeal;
+      healPlayer(heal);
       G.enemies.splice(i,1);
     }
   }
