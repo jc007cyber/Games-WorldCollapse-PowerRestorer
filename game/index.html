@@ -2381,7 +2381,7 @@ function updateEnemies(dt){
     const e=G.enemies[i];
     if(e.dead || e.hp<=0){
       if(!e.dead){ G.kills++; G.player.ult=clamp(G.player.ult+7,0,100); burst(e.x,e.y-8,16,ETYPES[e.type].color,150); if(ETYPES[e.type].boss) $('#bossbar').classList.remove('on'); }
-      const heal = e.type==='boss' ? HERO_BALANCE.bossKillHeal : e.type==='brute' ? HERO_BALANCE.eliteKillHeal : HERO_BALANCE.killHeal;
+      const heal = ETYPES[e.type].boss ? HERO_BALANCE.bossKillHeal : ['brute','mirror','siphon','sentinel'].includes(e.type) ? HERO_BALANCE.eliteKillHeal : HERO_BALANCE.killHeal;
       healPlayer(heal);
       G.enemies.splice(i,1);
     }
