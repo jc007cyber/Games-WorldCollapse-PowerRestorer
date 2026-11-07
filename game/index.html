@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#07070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>崩解世界 · 权能修复者 · 2026.11.07.8</title>
+<title>崩解世界 · 权能修复者 · 2026.11.07.9</title>
 <style>
 :root{
   --accent:#a86bff; --accent2:#5b2bbf; --accent-soft:rgba(168,107,255,.18);
@@ -2486,8 +2486,7 @@ function updateHud(){
   if(p.skillCd>0){
     skillBtn.classList.remove('ready');
     sk.classList.remove('hidden');
-    sk.textContent = `冷却时间
-${Math.ceil(p.skillCd)}秒`;
+    sk.textContent = `${Math.ceil(p.skillCd)}秒`;
   } else {
     sk.classList.add('hidden');
     skillBtn.classList.add('ready');
@@ -2585,11 +2584,7 @@ function buildPowerCards(){
       $('#skill-detail').innerHTML =
         `<div class="detail-title">专属技能</div>
          <div class="skill-head"><b class="skill-name">${P.skill.name}</b><span class="skill-key">Q 技能</span></div>
-         <p class="skill-desc">${P.skill.desc}</p>
-         <div class="skill-timing">
-           <div class="skill-time"><span>持续时间</span><b>${P.skill.duration} 秒</b></div>
-           <div class="skill-time"><span>冷却时间</span><b>${P.skill.cooldown} 秒</b></div>
-         </div>`;
+         <p class="skill-desc">${P.skill.desc}</p>`;
       $('#btn-power-next').disabled = false;
     });
     wrap.appendChild(el);
