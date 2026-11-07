@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#07070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>崩解世界 · 权能修复者 · 2026.11.07.3</title>
+<title>崩解世界 · 权能修复者 · 2026.11.07.4</title>
 <style>
 :root{
   --accent:#a86bff; --accent2:#5b2bbf; --accent-soft:rgba(168,107,255,.18);
@@ -346,28 +346,28 @@ const POWERS = [
     atk:{mode:'melee', dmg:26, cd:.40, range:46, arc:1.5, kb:130,
          blade:{mul:.55, speed:330, life:1.1, r:4}},
     passive:'每次击破累积 1 层「业」，每层提升 2% 镰刀伤害（上限 20 层）',
-    skill:{ name:'业力凝冥', cd:90, dur:60,
+    skill:{ name:'业力凝冥', duration:90, cooldown:60,
       desc:'镰刀伤害 +60% 并附加灼烧；背后凝结死神虚影，使目标虚弱、移动迟缓；画面浮现暗角与紫色滤镜。' },
     brief:'近战 · 高爆发 · 持续灼烧' },
   { id:'time', name:'时间之权', color:'#ffcc44', color2:'#a06a10', metal:'#fff0b8',
     weapon:'金辉怀表', tagline:'时间，是可以被拨动的齿轮',
     atk:{mode:'ranged', dmg:16, cd:.28, speed:360, r:3, life:1.1},
     passive:'移动时会留下时之残影，残影消散时对周围造成少量伤害',
-    skill:{ name:'时间暂停', cd:45, dur:10,
+    skill:{ name:'时间暂停', duration:45, cooldown:10,
       desc:'冻结全场敌人与弹幕 10 秒，自身行动如常，画面转为金色调。' },
     brief:'远程 · 控制 · 安全输出' },
   { id:'life', name:'生命之权', color:'#58e08a', color2:'#1f7a4a', metal:'#c8ffdc',
     weapon:'生息藤杖', tagline:'一切伤口，终会发芽',
     atk:{mode:'ranged', dmg:12, cd:.34, speed:300, r:4, life:1.2, spread:2, spreadAng:.16},
     passive:'每 8 秒自动回复少量生命；周围敌人越多，回复越快',
-    skill:{ name:'生命绽放', cd:40, dur:12,
+    skill:{ name:'生命绽放', duration:40, cooldown:12,
       desc:'持续回复生命；荆棘环绕对近身敌人反伤，藤蔓束缚使其减速。' },
     brief:'远程 · 续航 · 反伤' },
   { id:'fate', name:'命运之权', color:'#ff6fa8', color2:'#8c2350', metal:'#ffd0e4',
     weapon:'命运骰', tagline:'骰子落下之前，胜负无人知晓',
     atk:{mode:'ranged', dmg:15, cd:.30, speed:340, r:4, life:1.1},
     passive:'攻击有 25% 概率掷出命运：暴击 / 连击 / 减速 / 爆裂',
-    skill:{ name:'命运轮盘', cd:35, dur:15,
+    skill:{ name:'命运轮盘', duration:35, cooldown:15,
       desc:'轮盘常转：每次攻击必定触发随机命运效果，并大幅提升触发威力。' },
     brief:'远程 · 随机 · 高风险高回报' },
   { id:'order', name:'秩序之权', color:'#cfe4ff', color2:'#4a6a9c', metal:'#ffe9a8',
@@ -375,21 +375,21 @@ const POWERS = [
     atk:{mode:'melee', dmg:23, cd:.34, range:48, arc:1.45, kb:110,
          blade:{mul:.5, speed:360, life:1.2, r:5}},
     passive:'连续命中同一目标可叠加「裁定」标记，满层额外造成一次审判伤害',
-    skill:{ name:'秩序领域', cd:40, dur:15,
+    skill:{ name:'秩序领域', duration:40, cooldown:15,
       desc:'展开秩序领域：领域内敌人减速 40%、受到的伤害加深 30%，自身攻击附带律令斩击。' },
     brief:'近战 · 领域 · 稳定增伤' },
   { id:'space', name:'空间之权', color:'#35d6ff', color2:'#0b6f96', metal:'#c8f6ff',
     weapon:'裂隙指环', tagline:'两点之间，不必路过中间',
     atk:{mode:'ranged', dmg:14, cd:.26, speed:420, r:3, life:.9, pierce:1},
     passive:'冲刺变为瞬移，落点留下裂隙残影',
-    skill:{ name:'空间折叠', cd:25, dur:8,
+    skill:{ name:'空间折叠', duration:25, cooldown:8,
       desc:'瞬移距离翻倍，残影在原地爆裂造成范围伤害；期间移动速度提升。' },
     brief:'远程 · 位移 · 机动' },
   { id:'void', name:'虚无之权', color:'#b07bff', color2:'#2a1c40', metal:'#e0d4ff',
     weapon:'虚无之核', tagline:'被抹去的，从未存在过',
     atk:{mode:'ranged', dmg:18, cd:.38, speed:280, r:5, life:1.4, pierce:99},
     passive:'攻击无视敌人护甲，并将造成伤害的 12% 转化为生命',
-    skill:{ name:'虚无吞噬', cd:35, dur:10,
+    skill:{ name:'虚无吞噬', duration:35, cooldown:10,
       desc:'持续吞噬周围敌方弹幕；攻击吸血提升至 30%，并削弱敌人防御。' },
     brief:'远程 · 穿透 · 吸血' }
 ];
@@ -1961,13 +1961,13 @@ function tryDash(p){
 function trySkill(p){
   if(p.skillCd>0) return;
   const P=p.pw, S=P.skill;
-  p.skillCd = S.cd; p.skillT = S.dur;
-  if(P.id==='time'){ G.stopDur = S.dur; G.stopIntro = 0.7; }
+  p.skillCd = S.cooldown; p.skillT = S.duration;
+  if(P.id==='time'){ G.stopDur = S.duration; G.stopIntro = 0.7; }
   toast(S.name);
   flash(P.color, .3);
   if(P.id==='life'){ p.lifeTick = 0; }
-  if(P.id==='order'){ G.zones.push({kind:'order', x:p.x, y:p.y, r:78, t:0, dur:S.dur, color:P.color, follow:true}); }
-  if(P.id==='void'){ G.zones.push({kind:'void', x:p.x, y:p.y, r:70, t:0, dur:S.dur, color:P.color, follow:true}); }
+  if(P.id==='order'){ G.zones.push({kind:'order', x:p.x, y:p.y, r:78, t:0, dur:S.duration, color:P.color, follow:true}); }
+  if(P.id==='void'){ G.zones.push({kind:'void', x:p.x, y:p.y, r:70, t:0, dur:S.duration, color:P.color, follow:true}); }
 }
 function tryUlt(p){
   if(p.ult < 100) return;
@@ -2571,8 +2571,8 @@ function buildPowerCards(){
          <div class="skill-head"><b class="skill-name">${P.skill.name}</b><span class="skill-key">Q 技能</span></div>
          <p class="skill-desc">${P.skill.desc}</p>
          <div class="skill-timing">
-           <div class="skill-time"><span>持续时间</span><b>${P.skill.dur} 秒</b></div>
-           <div class="skill-time"><span>冷却时间</span><b>${P.skill.cd} 秒</b></div>
+           <div class="skill-time"><span>持续时间</span><b>${P.skill.duration} 秒</b></div>
+           <div class="skill-time"><span>冷却时间</span><b>${P.skill.cooldown} 秒</b></div>
          </div>`;
       $('#btn-power-next').disabled = false;
     });
