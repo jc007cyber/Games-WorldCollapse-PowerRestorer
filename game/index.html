@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#07070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>崩解世界 · 权能修复者 · 2026.11.07.7</title>
+<title>崩解世界 · 权能修复者 · 2026.11.07.8</title>
 <style>
 :root{
   --accent:#a86bff; --accent2:#5b2bbf; --accent-soft:rgba(168,107,255,.18);
@@ -244,6 +244,7 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
       <div class="topbar">
         <div class="sect-h" style="margin:0">世界故障图<small id="map-sub">点击故障点进入修复作战</small></div>
         <div style="display:flex;gap:6px">
+          <button class="pxbtn ghost" id="btn-change-power" style="padding:.5em .8em;font-size:clamp(10px,2.4vmin,13px)">更换英雄</button>
           <button class="pxbtn ghost" id="btn-reset" style="padding:.5em .8em;font-size:clamp(10px,2.4vmin,13px)">重置存档</button>
         </div>
       </div>
@@ -378,7 +379,7 @@ const POWERS = [
     atk:{mode:'melee', dmg:23, cd:.34, range:48, arc:1.45, kb:110,
          blade:{mul:.5, speed:360, life:1.2, r:5}},
     passive:'连续命中同一目标可叠加「裁定」标记，满层额外造成一次审判伤害',
-    skill:{ name:'秩序领域', duration:15, cooldown:40,
+    skill:{ name:'秩序领域', duration:40, cooldown:15,
       desc:'展开秩序领域：领域内敌人减速 40%、受到的伤害加深 30%，自身攻击附带律令斩击。' },
     brief:'近战 · 领域 · 稳定增伤' },
   { id:'space', name:'空间之权', color:'#35d6ff', color2:'#0b6f96', metal:'#c8f6ff',
@@ -1976,7 +1977,11 @@ function trySkill(p){
   toast(S.name);
   flash(P.color, .3);
   if(P.id==='life'){ p.lifeTick = 0; }
-  if(P.id==='order'){ G.zones.push({kind:'order', x:p.x, y:p.y, r:78, t:0, dur:S.duration, color:P.color, follow:true}); }
+  if(P.id==='order'){
+    const zone=G.zones.find(z=>z.kind==='order');
+    if(zone){ zone.x=p.x; zone.y=p.y; zone.r=78; zone.t=0; zone.dur=S.duration; zone.color=P.color; zone.follow=true; }
+    else G.zones.push({kind:'order', x:p.x, y:p.y, r:78, t:0, dur:S.duration, color:P.color, follow:true});
+  }
   if(P.id==='void'){ G.zones.push({kind:'void', x:p.x, y:p.y, r:70, t:0, dur:S.duration, color:P.color, follow:true}); }
 }
 function tryUlt(p){
@@ -2478,12 +2483,7 @@ function updateHud(){
     $('#hud-wave').textContent = `修复故障核心 ${pct}%`;
   }
   const skillBtn=$('#b-skill'), sk=$('#b-skill-cd'), ul=$('#b-ult-cd');
-  if(p.skillT>0){
-    skillBtn.classList.remove('ready');
-    sk.classList.remove('hidden');
-    sk.textContent = `持续时间
-${Math.ceil(p.skillT)}秒`;
-  } else if(p.skillCd>0){
+  if(p.skillCd>0){
     skillBtn.classList.remove('ready');
     sk.classList.remove('hidden');
     sk.textContent = `冷却时间
@@ -2556,11 +2556,13 @@ function worldCollapse(){
   Save.reset(); G.collapse=20; G.power=null; G.ult=null;
   $('#scr-result').classList.remove('hidden');
 }
+let powerReturnToMap = false;
+let powerBeforeMapChange = null;
 function buildPowerCards(){
   const wrap = $('#power-list'); wrap.innerHTML='';
   POWERS.forEach(P=>{
     const el = document.createElement('div');
-    el.className='pcard'; el.style.setProperty('--pc', P.color);
+    el.className='pcard'; el.dataset.powerId=P.id; el.style.setProperty('--pc', P.color);
     el.style.setProperty('--pc-soft', hexA(P.color,.25));
     el.innerHTML = `<canvas class="glyph" width="48" height="48"></canvas>
       <div><h3>${P.name}</h3><div class="tag">${P.tagline}</div><p>${P.brief}</p></div>
@@ -2592,6 +2594,7 @@ function buildPowerCards(){
     });
     wrap.appendChild(el);
   });
+  if(G.power){ const selected=wrap.querySelector(`[data-power-id="${G.power}"]`); if(selected) selected.click(); }
 }
 function drawPowerGlyph(cv, P){
   const g = cv.getContext('2d'); g.imageSmoothingEnabled=false;
@@ -2702,10 +2705,16 @@ function setupUI(){
     G.power=d.power; G.ult=d.ult||ULTS[0].id; G.collapse=d.collapse;
     syncAccent(); buildMap(); showScreen('map');
   });
-  $('#btn-power-back').addEventListener('click', ()=>showScreen('title'));
+  $('#btn-power-back').addEventListener('click', ()=>{
+    if(powerReturnToMap){
+      G.power=powerBeforeMapChange; powerReturnToMap=false; powerBeforeMapChange=null;
+      syncAccent(); buildMap(); showScreen('map');
+    } else showScreen('title');
+  });
   $('#btn-power-next').addEventListener('click', ()=>{
     if(!G.power) return;
     Save.data.power=G.power; Save.save();
+    if(powerReturnToMap){ powerReturnToMap=false; powerBeforeMapChange=null; syncAccent(); buildMap(); showScreen('map'); return; }
     buildUltCards(); showScreen('ult');
   });
   $('#btn-ult-back').addEventListener('click', ()=>showScreen('power'));
@@ -2713,6 +2722,10 @@ function setupUI(){
     if(!G.ult) return;
     Save.data.ult=G.ult; Save.data.collapse=G.collapse; Save.save();
     buildMap(); showScreen('map');
+  });
+  $('#btn-change-power').addEventListener('click', ()=>{
+    powerReturnToMap=true; powerBeforeMapChange=G.power;
+    buildPowerCards(); showScreen('power');
   });
   $('#btn-reset').addEventListener('click', ()=>{
     if(confirm('确定重置存档？所有已修复的故障点将重新出现。')){ Save.reset(); G.power=null; G.ult=null; G.collapse=20; showScreen('title'); }
