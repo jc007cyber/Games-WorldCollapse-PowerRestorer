@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#07070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>崩解世界 · 权能修复者</title>
+<title>崩解世界 · 权能修复者 · 2026.11.07.2</title>
 <style>
 :root{
   --accent:#a86bff; --accent2:#5b2bbf; --accent-soft:rgba(168,107,255,.18);
@@ -2534,7 +2534,7 @@ function buildPowerCards(){
         `<b style="color:${P.color}">${P.name}</b> · 武器：<b>${P.weapon}</b><br>
          攻击方式：<span class="k">${P.atk.mode==='melee'?'近战斩击':'远程弹射'}</span> · 基础伤害 <b>${P.atk.dmg}</b><br>
          被动：<b>${P.passive}</b><br>
-         权能技 <span class="k">${P.skill.name}</span>（持续 ${P.skill.dur}s / 冷却 ${P.skill.cd}s）：${P.skill.desc}`;
+         权能技 <span class="k">${P.skill.name}</span>（持续时间：${P.skill.dur}s / 冷却时间：${P.skill.cd}s）：${P.skill.desc}`;
       $('#btn-power-next').disabled = false;
     });
     wrap.appendChild(el);
