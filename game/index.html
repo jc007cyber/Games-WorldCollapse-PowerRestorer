@@ -98,7 +98,7 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg0);c
 .chapters .ch{display:flex;align-items:center;gap:6px;padding:4px 9px;border:2px solid var(--line);
 background:var(--panel);font-size:clamp(9px,2.2vmin,12px);letter-spacing:.08em}
 .chapters .ch i{width:8px;height:8px;display:inline-block;border:1px solid #000}
-.chapters .ch .o{background:#7b6bff}.chapters .ch .s{background:var(--danger)}
+.chapters .ch .o{background:#7b6bff}.chapters .ch .s{background:var(--danger)}.chapters .ch .deepdot{background:#ff9d4d}
 .chapters .ch .d{color:var(--dim);font-style:normal}
 #hud-key{position:absolute;left:50%;top:calc(58px + var(--safe-t));transform:translateX(-50%);
 font-size:clamp(10px,2.5vmin,13px);letter-spacing:.1em;color:#ffe9a8;white-space:nowrap;
@@ -2297,9 +2297,10 @@ function updateEnemies(dt){
         e.blinkCd = T.blink.cd;
         burst(e.x,e.y-8, 6, T.color, 90);
         let nx=e.x, ny=e.y, tries=0;
+        const jumpRange=e.type==='mirror'?165:70;
         do{
-          nx = clamp(p.x + rand(-70,70), 20, G.arena.w-20);
-          ny = clamp(p.y + rand(-70,70), 20, G.arena.h-12);
+          nx = clamp(p.x + rand(-jumpRange,jumpRange), 20, G.arena.w-20);
+          ny = clamp(p.y + rand(-jumpRange,jumpRange), 20, G.arena.h-12);
           tries++;
         } while((blockAt(nx,ny-8,T.r+6) || blockAt(nx,ny,T.r+6)) && tries<12);
         e.x = tries>=12 ? clamp(e.x,20,G.arena.w-20) : nx;
