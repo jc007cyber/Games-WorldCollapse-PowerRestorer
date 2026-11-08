@@ -648,7 +648,7 @@ const G = {
   screen:'title',
   power:null, ult:null,
   collapse:20,
-  levelId:null, lv:null,
+  levelId:null, lv:null, replayCleared:false,
   running:false, paused:false,
   time:0, last:0,
   cv:null, ctx:null, view:{w:320,h:180}, scale:3,
@@ -1807,6 +1807,7 @@ function makePlayer(pwId){
 function startLevel(id){
   const L = LEVEL_MAP[id]; if(!L) return;
   G.levelId = id; G.lv = L;
+  G.replayCleared = Save.data.done.includes(id);
   G.partCount = L.parts; G.part = 0; G.map = null; G.transit = null;
   G.waveInPart = 0; G.wave = 0; G.key = null;
   G.player = makePlayer(G.power);
@@ -1824,7 +1825,7 @@ function startLevel(id){
   $('#b-ult-n').textContent = ULT_MAP[G.ult].name;
   showScreen('battle');
   startPart(0);
-  toast(L.name + ' · ' + L.sub);
+  toast(G.replayCleared ? L.name + ' · 已修复关卡，崩解度保护已启用' : L.name + ' · ' + L.sub);
 }
 function startPart(i){
   const L=G.lv; if(!L) return;
@@ -2185,8 +2186,10 @@ function flash(color, a){ G.flash = a; G.flashColor = color; }
 function updateBattle(dt){
   const p = G.player, I = Input;
   G.elapsed += dt;
-  G.collapse = clamp(G.collapse + dt*0.12, 0, 100);
-  if(G.collapse >= 100){ worldCollapse(); return; }
+  if(!G.replayCleared){
+    G.collapse = clamp(G.collapse + dt*0.12, 0, 100);
+    if(G.collapse >= 100){ worldCollapse(); return; }
+  }
   if(G.transit){ updateTransit(dt); return; }
   readInput();
   const LOCK_R = 560;
@@ -2693,19 +2696,20 @@ function endLevel(win){
   G.running = false; G.phase = win?'win':'lose';
   const d = Save.data;
   if(win){
-    if(!d.done.includes(G.levelId)) d.done.push(G.levelId);
-    const chapterClear=G.lv && G.lv.chIdx===G.lv.chTotal;
-    G.collapse = clamp(G.collapse - 11 - (chapterClear?8:0), 0, 100);
+    const firstClear=!G.replayCleared;
+    if(firstClear && !d.done.includes(G.levelId)) d.done.push(G.levelId);
+    const chapterClear=firstClear && G.lv && G.lv.chIdx===G.lv.chTotal;
+    if(firstClear) G.collapse = clamp(G.collapse - 11 - (chapterClear?8:0), 0, 100);
     d.collapse=G.collapse;
     const key=G.levelId, prev=d.best[key];
     if(!prev || G.elapsed<prev) d.best[key]=G.elapsed;
     Save.save();
   } else {
-    G.collapse = clamp(G.collapse + 6, 0, 100);
+    if(!G.replayCleared) G.collapse = clamp(G.collapse + 6, 0, 100);
     d.collapse=G.collapse;
     Save.save();
   }
-  const chapterClear=win && G.lv && G.lv.chIdx===G.lv.chTotal;
+  const chapterClear=win && !G.replayCleared && G.lv && G.lv.chIdx===G.lv.chTotal;
   const finalClear=win && G.levelId==='origin';
   $('#res-title').textContent = finalClear ? '终末核心已净化' : chapterClear ? '章节已突破' : win ? '故障已修复' : '修复失败';
   $('#res-sub').textContent = finalClear ? '最终核心崩解 · 世界接缝重新闭合' : chapterClear ? `${G.lv.name} · 章节奖励：崩解度额外降低 8%` : win ? `${G.lv.name} · 接缝重新稳定` : `${G.lv.name} · 你被故障吞没了`;
