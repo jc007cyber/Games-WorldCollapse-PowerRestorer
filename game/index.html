@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#07070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>崩解世界 · 权能修复者 · 2026.11.08.14</title>
+<title>崩解世界 · 权能修复者 · 2026.11.08.15</title>
 <style>
 :root{
   --accent:#a86bff; --accent2:#5b2bbf; --accent-soft:rgba(168,107,255,.18);
@@ -79,8 +79,9 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg0);c
 .mapwrap{position:relative;flex:1;min-height:0;margin:6px 0;border:2px solid var(--line);background:
   repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 8px),
   repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 1px,transparent 1px 8px),
-  radial-gradient(90% 70% at 50% 50%,#131a2e,#080a12);overflow:hidden}
-.mapwrap svg{position:absolute;inset:0;width:100%;height:100%}
+  radial-gradient(90% 70% at 50% 50%,#131a2e,#080a12);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+.mapcanvas{position:relative;width:100%;height:140%;min-height:140%}
+.mapcanvas svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .node{pointer-events:auto;position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;
   align-items:center;gap:2px;cursor:pointer;padding:4px;min-width:74px}
 .node .dot{width:clamp(16px,3.6vmin,24px);height:clamp(16px,3.6vmin,24px);border:2px solid #000;
@@ -94,12 +95,14 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg0);c
 .node.origin.done .dot{background:var(--ok);box-shadow:0 0 12px rgba(88,224,138,.5)}
 .node.deep .dot{background:#ff9d4d;box-shadow:0 0 14px rgba(255,157,77,.65)}
 .node.deep.done .dot{background:var(--ok);box-shadow:0 0 12px rgba(88,224,138,.5)}
+.node.post .dot{background:#c56cff;box-shadow:0 0 14px rgba(197,108,255,.7)}
+.node.post.done .dot{background:var(--ok);box-shadow:0 0 12px rgba(88,224,138,.5)}
 .chapters{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 6px}
 .chapters .ch{display:flex;align-items:center;gap:6px;padding:4px 9px;border:2px solid var(--line);
 background:var(--panel);font-size:clamp(9px,2.2vmin,12px);letter-spacing:.08em}
 .chapters .ch i{width:8px;height:8px;display:inline-block;border:1px solid #000}
 .chapters .ch .o{background:#7b6bff}.chapters .ch .s{background:var(--danger)}.chapters .ch .deepdot{background:#ff9d4d}
-.chapters .ch .d{color:var(--dim);font-style:normal}
+.chapters .ch .d{color:var(--dim);font-style:normal}.chapters .ch .postdot{background:#c56cff}
 #hud-key{position:absolute;left:50%;top:calc(58px + var(--safe-t));transform:translateX(-50%);
 font-size:clamp(10px,2.5vmin,13px);letter-spacing:.1em;color:#ffe9a8;white-space:nowrap;
 text-shadow:0 2px 0 #000,0 0 14px rgba(255,215,107,.6);pointer-events:none}
@@ -259,13 +262,14 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
 <div class="ch"><i class="o"></i>起点关卡 <span class="d">5 关 · 11 张地图</span></div>
 <div class="ch"><i class="s"></i>标准关卡 <span class="d">2 关 · 8 张地图</span></div>
 <div class="ch"><i class="deepdot"></i>深层崩解 <span class="d">5 关 · 15 张地图</span></div>
+<div class="ch"><i class="postdot"></i>终末远征 <span class="d">3 关 · 11 张地图</span></div>
 </div>
-<div class="mapwrap" id="mapwrap"><svg id="mapsvg" preserveAspectRatio="none" viewBox="0 0 100 100"></svg></div>
+<div class="mapwrap" id="mapwrap"><div class="mapcanvas" id="mapcanvas"><svg id="mapsvg" preserveAspectRatio="none" viewBox="0 0 100 100"></svg></div></div>
       <div class="collapse" style="border:none;background:transparent;padding:2px 0">
         <span class="chip" id="chip-power">—</span>
         <span class="chip" id="chip-ult">—</span>
         <span class="spacer" style="flex:1"></span>
-        <span style="font-size:clamp(9px,2.2vmin,12px);color:var(--dim);letter-spacing:.1em" id="map-stat">已修复 0 / 12</span>
+        <span style="font-size:clamp(9px,2.2vmin,12px);color:var(--dim);letter-spacing:.1em" id="map-stat">已修复 0 / 15</span>
       </div>
     </section>
     <div id="hud" class="hidden">
@@ -437,51 +441,63 @@ const LEVELS = [
   { id:'dust', name:'数据荒原', sub:'废弃服务器群 · 沙尘与断码', tint:'#2b3a5c', floor:'#1a2138',
     theme:'dust', mapNames:['边缘缓存区'], tier:'origin', chapter:'起点关卡', chapterShort:'起点',
     novice:true, chIdx:1, chTotal:5, parts:1, wavesPerPart:2, per:[3,4], skipCore:true,
-    kinds:['grunt','shooter'], elite:false, x:16, y:15 },
+    kinds:['grunt','shooter'], elite:false, x:16, y:10 },
   { id:'clock', name:'时钟塔', sub:'停滞的齿轮 · 秒针卡死', tint:'#4a3a20', floor:'#241d12',
     theme:'clock', mapNames:['停摆的摆轮厅'], tier:'origin', chapter:'起点关卡', chapterShort:'起点',
     novice:true, chIdx:2, chTotal:5, parts:1, wavesPerPart:2, per:[4,4], skipCore:true,
-    kinds:['grunt','shooter','glitch'], elite:false, x:50, y:15 },
+    kinds:['grunt','shooter','glitch'], elite:false, x:50, y:10 },
   { id:'grove', name:'生命树海', sub:'根系坏死 · 腐化蔓延', tint:'#1f4030', floor:'#122318',
     theme:'grove', mapNames:['外环枯根','树心腐室'], tier:'origin', chapter:'起点关卡', chapterShort:'起点',
     novice:true, chIdx:3, chTotal:5, parts:2, wavesPerPart:2, per:[3,4],
-    kinds:['grunt','brute','shooter'], elite:true, x:84, y:15 },
+    kinds:['grunt','brute','shooter'], elite:true, x:84, y:10 },
   { id:'casino', name:'命运赌场', sub:'概率紊乱 · 骰子永不落定', tint:'#4a1f38', floor:'#2a1220',
     theme:'casino', mapNames:['碎骰前厅','概率回廊','轮盘主厅'], tier:'origin', chapter:'起点关卡', chapterShort:'起点',
     novice:true, chIdx:4, chTotal:5, parts:3, wavesPerPart:2, per:[3,4],
-    kinds:['glitch','shooter','brute'], elite:true, x:84, y:38 },
+    kinds:['glitch','shooter','brute'], elite:true, x:84, y:30 },
   { id:'court', name:'秩序法庭', sub:'律令崩坏 · 审判失序', tint:'#1e2c46', floor:'#111826',
     theme:'court', mapNames:['前庭石阶','律令柱廊','审判回廊','核心法庭'], tier:'origin', chapter:'起点关卡', chapterShort:'起点',
     novice:true, chIdx:5, chTotal:5, parts:4, wavesPerPart:2, per:[3,3],
-    kinds:['brute','shooter','grunt'], elite:true, x:50, y:38 },
+    kinds:['brute','shooter','grunt'], elite:true, x:50, y:30 },
   { id:'rift', name:'空间裂隙', sub:'坐标错乱 · 距离失去意义', tint:'#123a4a', floor:'#0b2029',
     theme:'rift', mapNames:['漂移碎岛','错位回廊','折叠夹层','裂隙原点'], tier:'standard', chapter:'标准关卡', chapterShort:'标准',
     novice:false, chIdx:1, chTotal:2, parts:4, wavesPerPart:2, per:[4,4],
-    kinds:['glitch','brute','shooter'], elite:true, x:16, y:38 },
+    kinds:['glitch','brute','shooter'], elite:true, x:16, y:30 },
   { id:'void', name:'虚无边境', sub:'世界尽头 · 崩解的源头', tint:'#2a1c3f', floor:'#150e22',
     theme:'void', mapNames:['灰烬外缘','静默回廊','零值夹层','归零之座'], tier:'standard', chapter:'标准关卡', chapterShort:'标准',
     novice:false, chIdx:2, chTotal:2, parts:4, wavesPerPart:2, per:[4,5],
-    kinds:['grunt','shooter','brute','glitch'], elite:true, boss:true, x:16, y:62 },
+    kinds:['grunt','shooter','brute','glitch'], elite:true, boss:true, x:16, y:50 },
   { id:'mirror', name:'镜像回廊', sub:'镜面折射 · 真身与倒影错位', tint:'#3b3266', floor:'#17142a',
     theme:'mirror', mapNames:['镜像入口','反射迷宫','双生镜厅'], tier:'deep', chapter:'深层崩解', chapterShort:'深层',
     novice:false, chIdx:1, chTotal:5, parts:3, wavesPerPart:3, per:[5,6,7],
-    kinds:['mirror','shooter','glitch','sentinel'], elite:true, x:50, y:62 },
+    kinds:['mirror','shooter','glitch','sentinel'], elite:true, x:50, y:50 },
   { id:'furnace', name:'熔断工厂', sub:'过载熔炉 · 失控机械群', tint:'#63351f', floor:'#29150e',
     theme:'furnace', mapNames:['冷却管廊','熔炉平台','核心铸造室'], tier:'deep', chapter:'深层崩解', chapterShort:'深层',
     novice:false, chIdx:2, chTotal:5, parts:3, wavesPerPart:3, per:[5,6,7],
-    kinds:['grunt','brute','siphon','shooter','sentinel'], elite:true, x:84, y:62 },
+    kinds:['grunt','brute','siphon','shooter','sentinel'], elite:true, x:84, y:50 },
   { id:'memory', name:'记忆墓园', sub:'遗失记忆 · 腐化回声', tint:'#244b4a', floor:'#102524',
     theme:'memory', mapNames:['遗忘碑林','记忆深井'], tier:'deep', chapter:'深层崩解', chapterShort:'深层',
     novice:false, chIdx:3, chTotal:5, parts:2, wavesPerPart:3, per:[6,7,8],
-    kinds:['siphon','glitch','mirror','sentinel'], elite:true, x:84, y:85 },
+    kinds:['siphon','glitch','mirror','sentinel'], elite:true, x:84, y:70 },
   { id:'inversion', name:'反演圣所', sub:'重力倒置 · 规则逆流', tint:'#23475c', floor:'#101d2b',
     theme:'inversion', mapNames:['倒悬阶梯','逆流回廊','反演祭坛'], tier:'deep', chapter:'深层崩解', chapterShort:'深层',
     novice:false, chIdx:4, chTotal:5, parts:3, wavesPerPart:3, per:[6,7,8],
-    kinds:['mirror','sentinel','brute','siphon'], elite:true, boss:true, x:50, y:85 },
+    kinds:['mirror','sentinel','brute','siphon'], elite:true, boss:true, x:50, y:70 },
   { id:'core', name:'崩解核心', sub:'世界尽头 · 最终修复战', tint:'#54243e', floor:'#210d20',
     theme:'core', mapNames:['崩解外壳','脉冲回路','零点防线','世界核心'], tier:'deep', chapter:'深层崩解', chapterShort:'深层',
     novice:false, chIdx:5, chTotal:5, parts:4, wavesPerPart:3, per:[6,7,8],
-    kinds:['mirror','siphon','sentinel','brute','glitch'], elite:true, boss:true, finalBoss:true, skipCore:true, x:16, y:85 }
+    kinds:['mirror','siphon','sentinel','brute','glitch'], elite:true, boss:true, skipCore:true, x:16, y:70 },
+  { id:'abyss', name:'深渊回响', sub:'沉没数据层 · 旧日回声', tint:'#38234f', floor:'#1c1028',
+    theme:'abyss', mapNames:['沉没边界','回声墓道','深渊祭坛'], tier:'post', chapter:'终末远征', chapterShort:'远征',
+    novice:false, chIdx:1, chTotal:3, parts:3, wavesPerPart:3, per:[6,7,8],
+    kinds:['mirror','siphon','glitch','sentinel'], elite:true, x:16, y:90 },
+  { id:'entropy', name:'熵潮回廊', sub:'熵值暴涨 · 规则持续坍缩', tint:'#57301f', floor:'#24130d',
+    theme:'entropy', mapNames:['熵潮入口','逆熵回廊','失序熔池','熵核平台'], tier:'post', chapter:'终末远征', chapterShort:'远征',
+    novice:false, chIdx:2, chTotal:3, parts:4, wavesPerPart:3, per:[7,8,9],
+    kinds:['mirror','siphon','sentinel','brute','glitch'], elite:true, boss:true, x:50, y:90 },
+  { id:'origin', name:'原初裂变', sub:'世界初始代码 · 终末决战', tint:'#54243e', floor:'#210d20',
+    theme:'origin', mapNames:['初始边界','源代码深井','创世回廊','原初核心'], tier:'post', chapter:'终末远征', chapterShort:'远征',
+    novice:false, chIdx:3, chTotal:3, parts:4, wavesPerPart:3, per:[8,9,10],
+    kinds:['mirror','siphon','sentinel','brute','glitch'], elite:true, boss:true, finalBoss:true, skipCore:true, x:84, y:90 }
 ];
 LEVELS.forEach(L=>{ L.waves = L.parts * L.wavesPerPart; });
 const LEVEL_MAP = Object.fromEntries(LEVELS.map(l=>[l.id,l]));
@@ -497,7 +513,10 @@ const THEMES = {
   furnace:   { pat:'stripe', motif:'gear', motifs:['gear','cracks','scales','gear'], edge:'#df7139', hi:'#ffd09a', deco:'#8c3f20', dust:'#ff9a55' },
   memory:    { pat:'diag', motif:'roots', motifs:['roots','voidcore','dataring','cracks'], edge:'#57b8a2', hi:'#c4f6dd', deco:'#276b5e', dust:'#8de3c7' },
   inversion: { pat:'check', motif:'scales', motifs:['scales','dice','cracks','dataring'], edge:'#56a9cf', hi:'#d4f2ff', deco:'#285d80', dust:'#86d9ff' },
-  core:      { pat:'slab', motif:'voidcore', motifs:['voidcore','cracks','gear','dataring'], edge:'#d75b8e', hi:'#ffd4e7', deco:'#78284d', dust:'#ff8fba' }
+  core:      { pat:'slab', motif:'voidcore', motifs:['voidcore','cracks','gear','dataring'], edge:'#d75b8e', hi:'#ffd4e7', deco:'#78284d', dust:'#ff8fba' },
+  abyss:     { pat:'dots', motif:'voidcore', motifs:['voidcore','cracks','roots','dice'], edge:'#a78bfa', hi:'#eadcff', deco:'#6945a0', dust:'#c4a7ff' },
+  entropy:   { pat:'check', motif:'gear', motifs:['gear','cracks','dataring','scales'], edge:'#f08a55', hi:'#ffd2a8', deco:'#8a3f2a', dust:'#ffae72' },
+  origin:    { pat:'shard', motif:'dataring', motifs:['dataring','voidcore','cracks','gear'], edge:'#ff75ae', hi:'#ffd8e9', deco:'#91385d', dust:'#ff9dc5' }
 };
 const PAT_CYCLE = ['grid','stripe','diag','check','slab','shard','dots'];
 const MAP_TEMPLATES = [
@@ -1797,7 +1816,7 @@ function startLevel(id){
   $('#hud-lv').textContent = `${L.chapter} ${L.chIdx} · ${L.name}`;
   $('#hud-chapter').textContent = L.novice
     ? `新手期 · ${L.chIdx}/${L.chTotal} · ${L.parts===1?'单地图':L.parts+' 张地图'}`
-    : `标准关卡 · ${L.chIdx}/${L.chTotal} · ${L.parts} 张地图`;
+    : `${L.chapter} · ${L.chIdx}/${L.chTotal} · ${L.parts} 张地图`;
   $('#hud-power').textContent = POWER_MAP[G.power].name;
   $('#hud-power').style.color = POWER_MAP[G.power].color;
   $('#bossbar').classList.remove('on');
@@ -2033,7 +2052,8 @@ function doAttack(p){
       G.bullets.push({ x:p.x+Math.cos(ang)*14, y:p.y-10+Math.sin(ang)*14,
         vx:Math.cos(ang)*A.blade.speed, vy:Math.sin(ang)*A.blade.speed,
         r:A.blade.r, dmg:dmg*A.blade.mul, life:A.blade.life, t:0,
-        color:P.color, pierce:0, owner:'p', hit:[], guide:5.2, blade:true });
+        color:P.color, pierce:0, owner:'p', hit:[], guide:5.2, blade:true,
+        wallPierce:(P.id==='karma'||P.id==='order') && p.skillT>0 });
     }
   } else {
     const shots = A.spread||1;
@@ -2468,7 +2488,7 @@ function updateBullets(dt){
     if(frozen && b.owner==='e'){  }
     else { b.x += b.vx*dt; b.y += b.vy*dt; }
     if(b.t>b.life || b.x<0||b.y<0||b.x>G.arena.w||b.y>G.arena.h){ G.bullets.splice(i,1); continue; }
-    if(blockAt(b.x, b.y, (b.r||1)*0.5)){
+    if(!b.wallPierce && blockAt(b.x, b.y, (b.r||1)*0.5)){
       burst(b.x, b.y, 3, b.color, 55); G.bullets.splice(i,1); continue;
     }
     if(b.owner==='p'){
@@ -2686,7 +2706,7 @@ function endLevel(win){
     Save.save();
   }
   const chapterClear=win && G.lv && G.lv.chIdx===G.lv.chTotal;
-  const finalClear=win && G.levelId==='core';
+  const finalClear=win && G.levelId==='origin';
   $('#res-title').textContent = finalClear ? '终末核心已净化' : chapterClear ? '章节已突破' : win ? '故障已修复' : '修复失败';
   $('#res-sub').textContent = finalClear ? '最终核心崩解 · 世界接缝重新闭合' : chapterClear ? `${G.lv.name} · 章节奖励：崩解度额外降低 8%` : win ? `${G.lv.name} · 接缝重新稳定` : `${G.lv.name} · 你被故障吞没了`;
   const mm=Math.floor(G.elapsed/60), ss=Math.floor(G.elapsed%60);
@@ -2704,7 +2724,7 @@ function endLevel(win){
   $('#btn-res-again').textContent = win ? '返回世界图' : '再 战 一 次';
   $('#scr-result').classList.remove('hidden');
   if(d.done.length>=LEVELS.length && win){
-    setTimeout(()=>{ $('#res-title').textContent='世界已稳定'; $('#res-sub').textContent='12 个主关卡全部修复 · 终末核心归于平静'; }, 60);
+    setTimeout(()=>{ $('#res-title').textContent='世界已稳定'; $('#res-sub').textContent=`${LEVELS.length} 个主关卡全部修复 · 原初核心归于平静`; }, 60);
   }
 }
 function worldCollapse(){
@@ -2812,9 +2832,9 @@ function drawUltGlyph(cv,U){
   g.globalAlpha=1; g.fillStyle='#fff'; g.fillRect(22,22,4,4);
 }
 function buildMap(){
-  const d=Save.data, wrap=$('#mapwrap'), svg=$('#mapsvg');
-  $$('.node').forEach(n=>n.remove());
-  svg.innerHTML='';
+  const d=Save.data, wrap=$('#mapwrap'), canvas=$('#mapcanvas'), svg=$('#mapsvg');
+  canvas.querySelectorAll('.node').forEach(n=>n.remove());
+  svg.innerHTML=''; wrap.scrollTop=0;
   for(let i=0;i<LEVELS.length-1;i++){
     const a=LEVELS[i], b=LEVELS[i+1];
     const ln=document.createElementNS('http://www.w3.org/2000/svg','line');
@@ -2835,10 +2855,11 @@ function buildMap(){
     n.innerHTML=`<div class="dot"></div><div class="nm">${L.name}</div>`+
       `<div class="lv">${L.chapterShort} ${L.chIdx}/${L.chTotal} · ${zone}${L.finalBoss?' · 终极BOSS':L.boss?' · BOSS':''}</div>`;
     if(isOpen) n.addEventListener('click', ()=>{ G.power=G.power||d.power; G.ult=G.ult||d.ult; startLevel(L.id); });
-    wrap.appendChild(n);
+    canvas.appendChild(n);
   });
   $('#map-stat').textContent = `已修复 ${d.done.length} / ${LEVELS.length}`;
-  $('#map-sub').textContent = `12 个主关卡 · 34 张区域地图 · 已修复 ${d.done.length}/${LEVELS.length}`;
+  const mapCount=LEVELS.reduce((sum,L)=>sum+L.parts,0);
+  $('#map-sub').textContent = `${LEVELS.length} 个主关卡 · ${mapCount} 张区域地图 · 已修复 ${d.done.length}/${LEVELS.length}`;
   $('#collapse-fill').style.width = G.collapse+'%';
   $('#collapse-val').textContent = Math.floor(G.collapse)+'%';
   $('#chip-power').textContent = '权能 · ' + (POWER_MAP[G.power]?.name || '—');
