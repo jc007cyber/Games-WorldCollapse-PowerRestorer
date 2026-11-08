@@ -1097,7 +1097,7 @@ function drawHero(p){
     pxc(cx,cy-5,2,'#fff0c2',.85);
   }
   if(P.id==='karma' && p.skillT>0) drawReaper(p, cx, cy);
-  drawWeapon(p, cx, by);
+  drawWeapon(p, cx, cy);
 }
 function drawReaper(p, x, y){
   const t=G.time, a = .22 + .08*Math.sin(t*4);
