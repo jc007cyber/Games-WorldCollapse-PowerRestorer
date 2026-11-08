@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#07070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>崩解世界 · 权能修复者 · 2026.11.07.13</title>
+<title>崩解世界 · 权能修复者 · 2026.11.08.14</title>
 <style>
 :root{
   --accent:#a86bff; --accent2:#5b2bbf; --accent-soft:rgba(168,107,255,.18);
@@ -136,7 +136,7 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
 #hud .en i{background:linear-gradient(180deg,#ffd76b,#e0912a)}
 #hud .bar span{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(8px,2vmin,11px);
   letter-spacing:.1em;text-shadow:0 1px 0 #000;color:#fff}
-#hud .pname{font-size:clamp(9px,2.2vmin,12px);letter-spacing:.14em;color:var(--accent);text-shadow:0 2px 0 #000;margin-bottom:4px}
+#hud .pname{font-size:clamp(9px,2.2vmin,12px);letter-spacing:.14em;color:var(--accent);text-shadow:0 2px 0 #000;margin-bottom:4px}.pname.passive{font-size:clamp(8px,1.9vmin,10px);letter-spacing:.08em;margin-top:-2px;margin-bottom:5px}
 .pad{position:absolute;right:calc(12px + var(--safe-r));bottom:calc(14px + var(--safe-b));
   display:grid;grid-template-columns:repeat(2,auto);gap:clamp(8px,2vmin,16px);align-items:end;justify-items:center}
 .pbtn{pointer-events:auto;width:clamp(54px,13vmin,78px);height:clamp(54px,13vmin,78px);border-radius:50%;
@@ -283,6 +283,7 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
       </div>
       <div class="vitals">
         <div class="pname" id="hud-power">业报之权</div>
+        <div class="pname passive hidden" id="hud-passive"></div>
         <div class="bar hp"><i id="hud-hp"></i><span id="hud-hp-t">100 / 100</span></div>
         <div class="bar en"><i id="hud-en"></i><span id="hud-en-t">大招 0%</span></div>
       </div>
@@ -398,7 +399,14 @@ const POWERS = [
     passive:'攻击无视敌人护甲，并将造成伤害的 12% 转化为生命',
     skill:{ name:'虚无吞噬', duration:10, cooldown:35,
       desc:'持续吞噬周围敌方弹幕；攻击吸血提升至 30%，并削弱敌人防御。' },
-    brief:'远程 · 穿透 · 吸血' }
+    brief:'远程 · 穿透 · 吸血' },
+  { id:'war', name:'战意之权', color:'#ff7548', color2:'#8e2d1d', metal:'#ffe0b0',
+    weapon:'陨星战锤', tagline:'以重锤击碎敌阵，以战意震荡大地', hp:175, moveSpeedMul:.92,
+    atk:{mode:'melee', dmg:34, cd:.56, range:55, arc:1.95, kb:180},
+    passive:'近战命中累积战意；连续命中4次后，下一次命中释放圆形震荡波，造成额外伤害、击退与减速',
+    skill:{ name:'崩山重击', duration:.65, cooldown:22,
+      desc:'高举陨星战锤砸向地面，对周围大范围敌人造成重击伤害，强力击退并减速。' },
+    brief:'近战 · 重锤 · 范围震荡' }
 ];
 const POWER_MAP = Object.fromEntries(POWERS.map(p=>[p.id,p]));
 const ULTS = [
@@ -944,6 +952,17 @@ const WEAPON_DEFS = {
     for(let i=0;i<5;i++){ const a=v*Math.PI*2+i*Math.PI*2/5, x=22+Math.cos(a)*14, y=22+Math.sin(a)*14;
       s.r(x-2,y-2,4,4,'#150e22'); s.r(x-1,y-1,2,2,'#b07bff'); s.d(x-1,y-1,'#e0d4ff');
       const b=a-0.55; s.d(22+Math.cos(b)*12.5, 22+Math.sin(b)*12.5, 'rgba(176,123,255,0.45)'); }
+  }},
+  war:{ frames:32, rotate:true, render(g){
+    const s=S(g);
+    s.ln(3,22,31,22,6,'#24130f'); s.ln(4,21,29,21,3,'#9a5632'); s.ln(4,20,28,20,1,'#f0bb83');
+    for(let i=0;i<4;i++){ const x=9+i*5; s.r(x,18,2,8,'#402219'); s.r(x,19,1,5,'#d29a63'); }
+    s.r(27,11,13,22,'#26130f'); s.r(29,9,11,26,'#6f2b1e');
+    s.r(30,10,9,24,'#c4472b'); s.r(31,12,7,20,'#f08042');
+    s.r(31,12,7,2,'#ffd39a'); s.r(31,29,7,2,'#7a241c');
+    s.r(25,15,5,14,'#e4bd8d'); s.r(40,15,3,14,'#471c18');
+    s.ln(32,10,35,5,2,'#ffe1ad'); s.ln(36,10,39,5,2,'#ffe1ad');
+    s.disc(35,22,3,'#fff0c2');
   }}
 };
 function computeBladeGeo(canvas, grip){
@@ -1070,8 +1089,15 @@ function drawHero(p){
       line(cx+Math.cos(a)*rx, cy+Math.sin(a)*ry, cx+Math.cos(a)*(rx+rand(6,14)), cy+Math.sin(a)*(ry+rand(6,14)), hi, .7, 1);
     }
   }
+  if(P.id==='war'){
+    pxell(cx,cy+1,8,7,'#32130f',.95);
+    px(cx-8,cy-7,16,9,'#3a1a17'); px(cx-6,cy-9,12,8,col2);
+    px(cx-4,cy-10,8,5,col); px(cx-3,cy-12,2,5,metal); px(cx+1,cy-12,2,5,metal);
+    px(cx-3,cy-3,6,2,'#2a0d0a'); px(cx-10,cy-3,4,7,metal); px(cx+6,cy-3,4,7,metal);
+    pxc(cx,cy-5,2,'#fff0c2',.85);
+  }
   if(P.id==='karma' && p.skillT>0) drawReaper(p, cx, cy);
-  drawWeapon(p, cx, cy);
+  drawWeapon(p, cx, by);
 }
 function drawReaper(p, x, y){
   const t=G.time, a = .22 + .08*Math.sin(t*4);
@@ -1088,6 +1114,7 @@ function drawReaper(p, x, y){
 const WEAPON_GEO = {
   karma:{grip:20, r0:20, r1:36, oc:-0.25, ow:0.75, tipOff:0.10},
   order:{grip:19, r0:16, r1:35, oc:-0.22, ow:0.32, tipOff:-0.08},
+  war:{grip:18, r0:22, r1:39, oc:0, ow:0.90, tipOff:0},
   time:{grip:11, r0:5}, life:{grip:11, r0:5},
   fate:{grip:11, r0:5}, space:{grip:11, r0:5}, void:{grip:11, r0:5}
 };
@@ -1237,6 +1264,14 @@ function drawWeaponAura(p, hx, hy, base){
         const ph=(t*0.9+i/6)%1, rr=22*(1-ph)+3, a=t*2+i*1.7;
         px(hx+Math.cos(a)*rr, hy+Math.sin(a)*rr, ph>.65?2:1, ph>.65?2:1, '#c8f6ff', ph*.8*boost);
       }
+      break; }
+    case 'war': {
+      for(let i=0;i<10;i++){
+        const a=t*1.7+i*TAU/10, rr=13+Math.sin(t*4+i)*3;
+        const sx=hx+Math.cos(a)*rr, sy=hy+Math.sin(a)*rr;
+        px(sx,sy,2,2,i%2?'#ffb36e':'#ffe0b0',.75*boost);
+      }
+      if(p.warReady){ ring(hx,hy,17+Math.sin(t*9)*2,'#ffe0b0',.8,2); pxc(hx,hy,3,'#ffffff',.8); }
       break; }
     case 'void': {
       for(let i=0;i<9;i++){
@@ -1742,10 +1777,11 @@ function nearestEnemy(x,y,maxD){
 }
 function makePlayer(pwId){
   const P = POWER_MAP[pwId] || POWERS[0];
+  const baseHp=P.hp||HERO_BALANCE.hp;
   return { x:G.arena.w/2, y:G.arena.h/2+60, vx:0, vy:0, r:6,
-    hp:HERO_BALANCE.hp, hpMax:HERO_BALANCE.hp, face:1, aimX:1, aimY:0, swing:0,
+    hp:baseHp, hpMax:baseHp, face:1, aimX:1, aimY:0, swing:0,
     atkCd:0, dashCd:0, dashT:0, dashX:1, dashY:0, inv:0, hurtFlash:0,
-    skillCd:0, skillT:0, ult:0, ultT:0, karma:0, lifeTick:0,
+    skillCd:0, skillT:0, ult:0, ultT:0, karma:0, lifeTick:0, warHits:0, warReady:false,
     pw:P, atkCount:0, roll:0, aimAng:0, atkAng:0, tgt:null, lockFx:0, turnBoost:0,
     trail:[], trailT:0, dustT:0, hitShake:0, arcGhost:0 };
 }
@@ -1917,6 +1953,25 @@ function healPlayer(amount){
   p.hp=Math.min(p.hpMax, p.hp+amount);
   return p.hp-before;
 }
+function warShockwave(p,radius,damage,slow,knockback,duration){
+  const y=p.y-8, dur=duration||.48;
+  G.slashes.push({x:p.x,y,a:0,arc:TAU,r:radius,t:0,dur,color:p.pw.color});
+  G.slashes.push({x:p.x,y,a:0,arc:TAU,r:radius*.68,t:0,dur:dur*.82,color:p.pw.metal});
+  for(const e of G.enemies){
+    if(e.dead) continue;
+    const dx=e.x-p.x, dy=(e.y-8)-y, d=Math.hypot(dx,dy)||1;
+    if(d>radius+e.r) continue;
+    damageEnemy(e,damage,{big:true});
+    e.vx+=dx/d*knockback; e.vy+=dy/d*knockback;
+    e.slow=Math.max(e.slow,slow);
+  }
+  for(let i=0;i<18;i++){
+    const a=i*TAU/18+rand(-.10,.10), d=rand(radius*.38,radius);
+    G.parts.push(mkPart(p.x+Math.cos(a)*d,y+Math.sin(a)*d,p.pw.metal,
+      {sp:rand(65,155),life:rand(.18,.42),size:1,g:18}));
+  }
+  G.shake=Math.max(G.shake,9);
+}
 function doAttack(p){
   const P = p.pw, A = P.atk, t=G.time;
   const ang = p.aimAng;
@@ -1930,6 +1985,7 @@ function doAttack(p){
   if(p.skillT>0 && P.id==='order') dmg *= 1.25;
   if(P.id==='fate' && (p.skillT>0 || Math.random()<.25)) dmg = rollFate(p, dmg);
   if(A.mode==='melee'){
+    let meleeHits=0;
     const range = A.range, arc = A.arc;
     const gg2 = WEAPON_GEO[P.id];
     G.slashes.push({ x:p.x, y:p.y-8, a:ang + (gg2? gg2.oc : 0), arc,
@@ -1949,6 +2005,7 @@ function doAttack(p){
       let diff = Math.abs(((ea - ang + Math.PI*3) % TAU) - Math.PI);
       if(diff > arc/2) continue;
       damageEnemy(e, dmg, {});
+      if(P.id==='war') meleeHits++;
       const hpx = p.x + dx*0.72, hpy = p.y-8 + dy*0.72;
       G.slashes.push({x:hpx, y:hpy, a:ea, arc:0, r:12, t:0, dur:.16, color:'#ffffff', spark:true});
       for(let q=0;q<4;q++){
@@ -1961,6 +2018,16 @@ function doAttack(p){
       if(p.skillT>0 && P.id==='karma'){ e.burn = Math.max(e.burn, 3); e.weak = Math.max(e.weak, 4); e.slow = Math.max(e.slow, 4); }
       if(P.id==='order'){ e.mark++; if(e.mark>=4){ e.mark=0; damageEnemy(e, dmg*.8, {big:true}); } }
       if(P.id==='void') p.hp = Math.min(p.hpMax, p.hp + dmg*.12);
+    }
+    if(P.id==='war' && meleeHits>0){
+      if(p.warReady){
+        p.warReady=false; p.warHits=0;
+        warShockwave(p,96,dmg*1.15,1.45,220,.44);
+        toast('破军震荡');
+      } else {
+        p.warHits++;
+        if(p.warHits>=4){ p.warHits=0; p.warReady=true; toast('战意已满 · 下一击触发震荡'); }
+      }
     }
     if(A.blade){
       G.bullets.push({ x:p.x+Math.cos(ang)*14, y:p.y-10+Math.sin(ang)*14,
@@ -2023,6 +2090,11 @@ function trySkill(p){
     else G.zones.push({kind:'order', x:p.x, y:p.y, r:78, t:0, dur:S.duration, color:P.color, follow:true});
   }
   if(P.id==='void'){ G.zones.push({kind:'void', x:p.x, y:p.y, r:70, t:0, dur:S.duration, color:P.color, follow:true}); }
+  if(P.id==='war'){
+    warShockwave(p,116,P.atk.dmg*3.2*HERO_BALANCE.damageMul,2.2,270,.56);
+    G.shake=Math.max(G.shake,13);
+    for(let i=0;i<10;i++) G.parts.push(mkPart(p.x,p.y-8,P.metal,{sp:rand(90,190),life:rand(.22,.48),size:2,g:24}));
+  }
 }
 function tryUlt(p){
   if(p.ult < 100) return;
@@ -2127,7 +2199,7 @@ function updateBattle(dt){
     if(p.skillT<=0){ p.skillT=0; toast('权能结束'); }
   }
   p.ult = clamp(p.ult + dt*1.2, 0, 100);
-  let spd = HERO_BALANCE.moveSpeed;
+  let spd = HERO_BALANCE.moveSpeed * (p.pw.moveSpeedMul||1);
   if(p.pw.id==='space' && p.skillT>0) spd *= 1.45;
   if(p.pw.id==='karma' && p.skillT>0) spd *= .92;
   if(p.dashT>0){
@@ -2554,6 +2626,12 @@ function updateHud(){
   $('#hud-hp-t').textContent = `${Math.ceil(p.hp)} / ${p.hpMax}`;
   $('#hud-en').style.transform = `scaleX(${p.ult/100})`;
   $('#hud-en-t').textContent = p.ult>=100 ? '大招就绪！' : `大招 ${Math.floor(p.ult)}%`;
+  const passive=$('#hud-passive');
+  if(p.pw.id==='war'){
+    passive.classList.remove('hidden');
+    passive.textContent=p.warReady?'破军震荡 · READY':`战意 ${p.warHits}/4`;
+    passive.style.color=p.warReady?'#ffe0b0':p.pw.color;
+  } else passive.classList.add('hidden');
   $('#hud-collapse').style.width = G.collapse+'%';
   $('#hud-collapse-v').textContent = Math.floor(G.collapse)+'%';
   if(G.phase==='core'){
