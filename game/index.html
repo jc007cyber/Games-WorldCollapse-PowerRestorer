@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#07070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>崩解世界 · 权能修复者 · 2026.11.08.15</title>
+<title>崩解世界 · 权能修复者 · 2026.11.08.16</title>
 <style>
 :root{
   --accent:#a86bff; --accent2:#5b2bbf; --accent-soft:rgba(168,107,255,.18);
@@ -80,17 +80,17 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg0);c
   repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 8px),
   repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 1px,transparent 1px 8px),
   radial-gradient(90% 70% at 50% 50%,#131a2e,#080a12);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}
-.mapcanvas{position:relative;width:100%;height:140%;min-height:140%}
+.mapcanvas{position:relative;width:100%;height:300%;min-height:300%}
 .mapcanvas svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .node{pointer-events:auto;position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;
-  align-items:center;gap:2px;cursor:pointer;padding:4px;min-width:74px}
+  align-items:center;gap:2px;cursor:pointer;padding:2px;min-width:58px;max-width:24%}
 .node .dot{width:clamp(16px,3.6vmin,24px);height:clamp(16px,3.6vmin,24px);border:2px solid #000;
   background:var(--danger);box-shadow:0 0 14px rgba(255,77,106,.6);animation:pulse 1.6s infinite}
 .node.done .dot{background:var(--ok);box-shadow:0 0 12px rgba(88,224,138,.5);animation:none}
 .node.locked{pointer-events:none;opacity:.42}
 .node.cur .dot{outline:2px solid #fff;outline-offset:3px}
-.node .nm{font-size:clamp(9px,2.3vmin,12px);letter-spacing:.08em;white-space:nowrap;text-shadow:0 2px 0 #000}
-.node .lv{font-size:7px;color:var(--dim);letter-spacing:.06em;line-height:1.2;max-width:108px;text-align:center}
+.node .nm{font-size:clamp(8px,2vmin,10px);letter-spacing:.04em;white-space:normal;text-align:center;line-height:1.1;max-width:76px;text-shadow:0 2px 0 #000}
+.node .lv{font-size:6px;color:var(--dim);letter-spacing:.03em;line-height:1.2;max-width:76px;text-align:center}
 .node.origin .dot{background:#7b6bff;box-shadow:0 0 14px rgba(123,107,255,.65)}
 .node.origin.done .dot{background:var(--ok);box-shadow:0 0 12px rgba(88,224,138,.5)}
 .node.deep .dot{background:#ff9d4d;box-shadow:0 0 14px rgba(255,157,77,.65)}
@@ -262,14 +262,14 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
 <div class="ch"><i class="o"></i>起点关卡 <span class="d">5 关 · 11 张地图</span></div>
 <div class="ch"><i class="s"></i>标准关卡 <span class="d">2 关 · 8 张地图</span></div>
 <div class="ch"><i class="deepdot"></i>深层崩解 <span class="d">5 关 · 15 张地图</span></div>
-<div class="ch"><i class="postdot"></i>终末远征 <span class="d">3 关 · 11 张地图</span></div>
+<div class="ch"><i class="postdot"></i>终末远征 <span class="d">38 关 · 88 张地图</span></div>
 </div>
 <div class="mapwrap" id="mapwrap"><div class="mapcanvas" id="mapcanvas"><svg id="mapsvg" preserveAspectRatio="none" viewBox="0 0 100 100"></svg></div></div>
       <div class="collapse" style="border:none;background:transparent;padding:2px 0">
         <span class="chip" id="chip-power">—</span>
         <span class="chip" id="chip-ult">—</span>
         <span class="spacer" style="flex:1"></span>
-        <span style="font-size:clamp(9px,2.2vmin,12px);color:var(--dim);letter-spacing:.1em" id="map-stat">已修复 0 / 15</span>
+        <span style="font-size:clamp(9px,2.2vmin,12px);color:var(--dim);letter-spacing:.1em" id="map-stat">已修复 0 / 50</span>
       </div>
     </section>
     <div id="hud" class="hidden">
@@ -393,7 +393,7 @@ const POWERS = [
   { id:'space', name:'空间之权', color:'#35d6ff', color2:'#0b6f96', metal:'#c8f6ff',
     weapon:'裂隙指环', tagline:'两点之间，不必路过中间',
     atk:{mode:'ranged', dmg:14, cd:.26, speed:420, r:3, life:.9, pierce:1},
-    passive:'冲刺变为瞬移，落点留下裂隙残影',
+    passive:'空间弹体穿墙并贯穿多个敌人，攻击伤害提升 50%；冲刺变为瞬移，落点留下裂隙残影',
     skill:{ name:'空间折叠', duration:8, cooldown:25,
       desc:'瞬移距离翻倍，残影在原地爆裂造成范围伤害；期间移动速度提升。' },
     brief:'远程 · 位移 · 机动' },
@@ -499,7 +499,31 @@ const LEVELS = [
     novice:false, chIdx:3, chTotal:3, parts:4, wavesPerPart:3, per:[8,9,10],
     kinds:['mirror','siphon','sentinel','brute','glitch'], elite:true, boss:true, finalBoss:true, skipCore:true, x:84, y:90 }
 ];
+
+const EXPANSION_CHAPTERS = [{"name":"裂界远征","short":"裂界","theme":"fracture","tint":"#1a4256","floor":"#0b2029","levels":[{"id":"riftfront","name":"裂界前哨","sub":"空间边界撕裂 · 失重残片","maps":["裂界入口","断层平台"],"per":[7,8,9],"kinds":["grunt","glitch","shooter"]},{"id":"fractured_axis","name":"断轴回廊","sub":"坐标偏移 · 断裂空间","maps":["断轴走廊","偏移高台"],"per":[7,8,9],"kinds":["glitch","brute","shooter"]},{"id":"mirror_tide","name":"镜潮荒湾","sub":"镜像潮汐 · 双重追击","maps":["镜潮荒湾","折光石桥"],"per":[8,9,10],"kinds":["mirror","glitch","shooter"]},{"id":"storm_grid","name":"风暴网格","sub":"电弧过载 · 网格风暴","maps":["雷暴网格","电弧中庭"],"per":[8,9,10],"kinds":["sentinel","glitch","brute"]},{"id":"rift_warden","name":"裂界守门","sub":"裂隙封锁 · 守门者苏醒","maps":["封印回廊","裂界王座","守门核心"],"per":[9,10,11],"kinds":["mirror","sentinel","brute","glitch"],"boss":true}]},{"name":"机械深渊","short":"机械","theme":"machine","tint":"#684022","floor":"#28170e","levels":[{"id":"scrap_wastes","name":"废铁荒场","sub":"失控机群 · 废铁风暴","maps":["废铁入口","拆解平台"],"per":[8,9,10],"kinds":["grunt","shooter","brute"]},{"id":"gearworks","name":"齿轮工坊","sub":"齿轮咬合 · 机械巡逻","maps":["齿轮长廊","传动中枢"],"per":[8,9,10],"kinds":["sentinel","shooter","glitch"]},{"id":"molten_rail","name":"熔轨禁区","sub":"高温熔流 · 装甲列阵","maps":["熔轨站台","冷却闸门"],"per":[9,10,11],"kinds":["brute","sentinel","siphon"]},{"id":"iron_citadel","name":"钢铁堡垒","sub":"重装防线 · 火力封锁","maps":["外墙防线","钢铁内庭"],"per":[9,10,11],"kinds":["sentinel","brute","shooter","mirror"]},{"id":"reactor_heart","name":"反应炉之心","sub":"核心过载 · 炉心守卫","maps":["反应堆外环","高压管廊","熔炉核心"],"per":[10,11,12],"kinds":["sentinel","brute","siphon","glitch"],"boss":true}]},{"name":"时空迷城","short":"时空","theme":"chrono","tint":"#65521e","floor":"#241d0d","levels":[{"id":"slow_hour","name":"迟缓之境","sub":"时间粘滞 · 迟缓追猎","maps":["停滞街区","缓流回廊"],"per":[9,10,11],"kinds":["glitch","shooter","grunt"]},{"id":"rewind_hall","name":"逆时长廊","sub":"时间回卷 · 镜像突袭","maps":["回卷入口","逆时平台"],"per":[9,10,11],"kinds":["mirror","glitch","sentinel"]},{"id":"loop_garden","name":"循环花园","sub":"路径循环 · 无尽增殖","maps":["循环庭院","时环花圃"],"per":[10,11,12],"kinds":["siphon","glitch","brute"]},{"id":"paradox_lab","name":"悖论实验室","sub":"因果错位 · 实验体失控","maps":["观测室","悖论试验场"],"per":[10,11,12],"kinds":["mirror","sentinel","shooter","brute"]},{"id":"hourglass_throne","name":"沙漏王座","sub":"时间尽头 · 守时者降临","maps":["沙漏外庭","终时回廊","永恒沙室"],"per":[11,12,13],"kinds":["mirror","sentinel","brute","glitch"],"boss":true}]},{"name":"腐化圣域","short":"腐化","theme":"blight","tint":"#28513b","floor":"#10261b","levels":[{"id":"root_maze","name":"盘根迷宫","sub":"根系暴走 · 地脉封锁","maps":["枯根入口","盘根深处"],"per":[10,11,12],"kinds":["siphon","grunt","brute"]},{"id":"spore_mire","name":"孢子沼泽","sub":"毒雾弥漫 · 腐化扩散","maps":["孢子浅滩","腐泥沼心"],"per":[10,11,12],"kinds":["siphon","glitch","shooter"]},{"id":"decay_basin","name":"衰败盆地","sub":"生命枯竭 · 腐蚀守卫","maps":["枯萎盆地","腐蚀石窟"],"per":[11,12,13],"kinds":["siphon","mirror","brute","sentinel"]},{"id":"plague_altar","name":"疫变祭坛","sub":"祭坛污染 · 变异集结","maps":["祭坛外围","疫变回廊"],"per":[11,12,13],"kinds":["siphon","sentinel","glitch","brute"]},{"id":"blight_heart","name":"腐化之心","sub":"圣域崩坏 · 腐化母体","maps":["腐化圣门","根核深井","圣域之心"],"per":[12,13,14],"kinds":["siphon","mirror","sentinel","brute"],"boss":true}]},{"name":"命运残响","short":"命运","theme":"fateecho","tint":"#5a2846","floor":"#281020","levels":[{"id":"dice_grave","name":"骰骨墓园","sub":"概率失衡 · 骰骨复苏","maps":["骰骨墓道","概率墓室"],"per":[11,12,13],"kinds":["glitch","shooter","grunt"]},{"id":"chance_casino","name":"机会赌场","sub":"赔率崩坏 · 赌局失控","maps":["筹码大厅","轮盘暗室"],"per":[11,12,13],"kinds":["glitch","mirror","shooter","brute"]},{"id":"oracle_vault","name":"预言宝库","sub":"预言篡改 · 守密者苏醒","maps":["预言长廊","密藏大厅"],"per":[12,13,14],"kinds":["mirror","sentinel","siphon"]},{"id":"odds_storm","name":"概率风暴","sub":"随机数暴走 · 多重突袭","maps":["乱数前线","概率风眼"],"per":[12,13,14],"kinds":["glitch","sentinel","brute","mirror"]},{"id":"fate_crown","name":"命运王冠","sub":"终局裁定 · 命运化身","maps":["王冠阶梯","命运殿堂","裁决核心"],"per":[13,14,15],"kinds":["mirror","sentinel","brute","glitch"],"boss":true}]},{"name":"虚空边界","short":"虚空","theme":"singularity","tint":"#30244f","floor":"#120d24","levels":[{"id":"black_sea","name":"黑潮之海","sub":"虚空涨潮 · 暗影集结","maps":["黑潮岸线","沉没平台"],"per":[12,13,14],"kinds":["siphon","mirror","grunt"]},{"id":"dark_matter","name":"暗物质场","sub":"质量异常 · 重力扰动","maps":["暗物质入口","引力廊道"],"per":[12,13,14],"kinds":["mirror","brute","sentinel"]},{"id":"star_grave","name":"星骸墓地","sub":"恒星熄灭 · 星骸守卫","maps":["星骸荒原","陨星墓室"],"per":[13,14,15],"kinds":["sentinel","siphon","glitch","brute"]},{"id":"gravity_well","name":"引力深井","sub":"空间坍缩 · 引力暴走","maps":["深井边缘","坍缩回廊"],"per":[13,14,15],"kinds":["mirror","brute","sentinel","siphon"]},{"id":"singularity_core","name":"奇点核心","sub":"虚空尽头 · 奇点守卫","maps":["事件视界","奇点环带","零维核心"],"per":[14,15,16],"kinds":["mirror","siphon","sentinel","brute","glitch"],"boss":true}]},{"name":"永恒终章","short":"永恒","theme":"eternity","tint":"#54263f","floor":"#210d20","levels":[{"id":"last_front","name":"终末前线","sub":"最后防线 · 终末军团","maps":["终末哨站","崩塌前沿"],"per":[13,14,15],"kinds":["grunt","shooter","brute","glitch"]},{"id":"collapse_field","name":"崩坏原野","sub":"世界裂解 · 残片风暴","maps":["裂解原野","破碎高台"],"per":[13,14,15],"kinds":["mirror","siphon","sentinel","brute"]},{"id":"godfall","name":"诸神陨落","sub":"权能残响 · 神性守卫","maps":["陨落神殿","神像回廊"],"per":[14,15,16],"kinds":["mirror","sentinel","brute","glitch"]},{"id":"origin_forge","name":"创世熔炉","sub":"世界重铸 · 源代码燃烧","maps":["创世锻台","源代码长廊"],"per":[14,15,16],"kinds":["siphon","mirror","sentinel","brute","glitch"]},{"id":"eternity_core","name":"永恒核心","sub":"世界终局 · 最后的修复","maps":["终末之门","创世回廊","永恒核心"],"per":[15,16,17],"kinds":["mirror","siphon","sentinel","brute","glitch"],"boss":true,"finalBoss":true,"skipCore":true}]}];
+for(const chapter of EXPANSION_CHAPTERS){
+  chapter.levels.forEach((entry,index)=>{
+    LEVELS.push({
+      id:entry.id, name:entry.name, sub:entry.sub,
+      tint:chapter.tint, floor:chapter.floor, theme:chapter.theme,
+      mapNames:entry.maps, tier:'post', chapter:chapter.name, chapterShort:chapter.short,
+      novice:false, chIdx:index+1, chTotal:5, parts:entry.maps.length, wavesPerPart:3,
+      per:entry.per, kinds:entry.kinds, elite:true, boss:!!entry.boss,
+      finalBoss:!!entry.finalBoss, skipCore:!!entry.skipCore
+    });
+  });
+}
+
+LEVELS.find(L=>L.id==='origin').finalBoss = false;
 LEVELS.forEach(L=>{ L.waves = L.parts * L.wavesPerPart; });
+const WORLD_MAP_COLS=4;
+const WORLD_MAP_ROWS=Math.ceil(LEVELS.length/WORLD_MAP_COLS);
+LEVELS.forEach((L,i)=>{
+  const row=Math.floor(i/WORLD_MAP_COLS), rawCol=i%WORLD_MAP_COLS;
+  const col=row%2===0?rawCol:WORLD_MAP_COLS-1-rawCol;
+  L.x=12.5+col*25;
+  L.y=4+row*(92/Math.max(1,WORLD_MAP_ROWS-1));
+});
 const LEVEL_MAP = Object.fromEntries(LEVELS.map(l=>[l.id,l]));
 const THEMES = {
   dust:      { pat:'grid', motif:'dataring', motifs:['dataring','gear','cracks','dataring'], edge:'#5a76b0', hi:'#8fa8e0', deco:'#4b6296', dust:'#6f86c0' },
@@ -516,7 +540,14 @@ const THEMES = {
   core:      { pat:'slab', motif:'voidcore', motifs:['voidcore','cracks','gear','dataring'], edge:'#d75b8e', hi:'#ffd4e7', deco:'#78284d', dust:'#ff8fba' },
   abyss:     { pat:'dots', motif:'voidcore', motifs:['voidcore','cracks','roots','dice'], edge:'#a78bfa', hi:'#eadcff', deco:'#6945a0', dust:'#c4a7ff' },
   entropy:   { pat:'check', motif:'gear', motifs:['gear','cracks','dataring','scales'], edge:'#f08a55', hi:'#ffd2a8', deco:'#8a3f2a', dust:'#ffae72' },
-  origin:    { pat:'shard', motif:'dataring', motifs:['dataring','voidcore','cracks','gear'], edge:'#ff75ae', hi:'#ffd8e9', deco:'#91385d', dust:'#ff9dc5' }
+  origin:    { pat:'shard', motif:'dataring', motifs:['dataring','voidcore','cracks','gear'], edge:'#ff75ae', hi:'#ffd8e9', deco:'#91385d', dust:'#ff9dc5' },
+  fracture:  { pat:'shard', motif:'cracks', motifs:['cracks','voidcore','dataring','gear'], edge:'#35a6d6', hi:'#c8f6ff', deco:'#1c6f96', dust:'#7ce0ff' },
+  machine:   { pat:'stripe', motif:'gear', motifs:['gear','dataring','scales','cracks'], edge:'#df8a45', hi:'#ffe0a0', deco:'#8a4d28', dust:'#ffb56b' },
+  chrono:    { pat:'grid', motif:'gear', motifs:['gear','scales','dataring','dice'], edge:'#e0bd55', hi:'#fff0b8', deco:'#8b6b28', dust:'#ffe080' },
+  blight:    { pat:'diag', motif:'roots', motifs:['roots','cracks','voidcore','roots'], edge:'#55a66c', hi:'#c4f6c8', deco:'#286b42', dust:'#8de3a0' },
+  fateecho:  { pat:'check', motif:'dice', motifs:['dice','scales','dataring','cracks'], edge:'#d65b9b', hi:'#ffd0e4', deco:'#82345d', dust:'#ff9dcc' },
+  singularity:{ pat:'dots', motif:'voidcore', motifs:['voidcore','cracks','dataring','roots'], edge:'#8a70dc', hi:'#e0d4ff', deco:'#503b91', dust:'#b8a4ff' },
+  eternity:  { pat:'slab', motif:'dataring', motifs:['dataring','voidcore','gear','cracks'], edge:'#ff75ae', hi:'#ffd8e9', deco:'#91385d', dust:'#ff9dc5' }
 };
 const PAT_CYCLE = ['grid','stripe','diag','check','slab','shard','dots'];
 const MAP_TEMPLATES = [
@@ -570,13 +601,19 @@ function blockAt(x,y,pad){
     if(x>b.x-q && x<b.x+b.w+q && y>b.y-q && y<b.y+b.h+q) return b;
   return null;
 }
-function blockLine(x1,y1,x2,y2){
+function blockLine(x1,y1,x2,y2,pad){
   const d=Math.hypot(x2-x1,y2-y1), n=Math.max(2,Math.ceil(d/4));
   for(let i=1;i<n;i++){
     const t=i/n;
-    if(blockAt(x1+(x2-x1)*t, y1+(y2-y1)*t, 0)) return true;
+    if(blockAt(x1+(x2-x1)*t, y1+(y2-y1)*t, pad||0)) return true;
   }
   return false;
+}
+function segmentCircleHit(x1,y1,x2,y2,cx,cy,r){
+  const dx=x2-x1, dy=y2-y1, len2=dx*dx+dy*dy;
+  const t=len2>0?clamp(((cx-x1)*dx+(cy-y1)*dy)/len2,0,1):0;
+  const px=x1+dx*t, py=y1+dy*t;
+  return dist2(px,py,cx,cy)<=r*r;
 }
 function pushOutBlocks(o){
   const r=o.r||6, W=G.arena.w, H=G.arena.h;
@@ -604,6 +641,77 @@ function pushOutBlocks(o){
   return n;
 }
 function resolveBlocks(p){ pushOutBlocks(p); p.x=clamp(p.x,14,G.arena.w-14); p.y=clamp(p.y,20,G.arena.h-14); }
+
+const ENEMY_PATH_CELL=24;
+const ENEMY_PATH_DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+function buildEnemyPathField(pad,targetX,targetY){
+  const W=G.arena.w,H=G.arena.h,size=ENEMY_PATH_CELL;
+  const cols=Math.ceil(W/size),rows=Math.ceil(H/size),count=cols*rows;
+  const walk=new Uint8Array(count),dist=new Int16Array(count);
+  dist.fill(-1);
+  for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
+    const wx=clamp(x*size+size/2,12,W-12),wy=clamp(y*size+size/2,16,H-14);
+    walk[y*cols+x]=(!blockAt(wx,wy,pad)&&!blockAt(wx,wy-8,pad))?1:0;
+  }
+  let seed=-1,seedScore=Infinity;
+  for(let i=0;i<count;i++) if(walk[i]){
+    const x=(i%cols)*size+size/2,y=Math.floor(i/cols)*size+size/2;
+    const score=dist2(x,y,G.player.x,G.player.y);
+    if(score<seedScore){seedScore=score;seed=i;}
+  }
+  if(seed<0) return {size,cols,rows,walk,dist,seed:-1,targetX,targetY,pad,expires:G.time+.35};
+  const queue=new Int32Array(count);let head=0,tail=0;
+  queue[tail++]=seed;dist[seed]=0;
+  while(head<tail){
+    const cur=queue[head++],cx=cur%cols,cy=Math.floor(cur/cols);
+    for(const [dx,dy] of ENEMY_PATH_DIRS){
+      const nx=cx+dx,ny=cy+dy;
+      if(nx<0||ny<0||nx>=cols||ny>=rows) continue;
+      const ni=ny*cols+nx;
+      if(!walk[ni]||dist[ni]>=0) continue;
+      if(dx&&dy&&(!walk[cy*cols+nx]||!walk[ny*cols+cx])) continue;
+      dist[ni]=dist[cur]+1;queue[tail++]=ni;
+    }
+  }
+  return {size,cols,rows,walk,dist,seed,targetX,targetY,pad,expires:G.time+.35};
+}
+function enemyPathDirection(e){
+  const pad=e.r>=18?26:e.r>=11?16:12,size=ENEMY_PATH_CELL;
+  const targetX=Math.floor(G.player.x/size),targetY=Math.floor(G.player.y/size);
+  let field=G.pathFields[pad];
+  if(!field||field.targetX!==targetX||field.targetY!==targetY||G.time>=field.expires){
+    field=buildEnemyPathField(pad,targetX,targetY);G.pathFields[pad]=field;
+  }
+  if(!field||field.seed<0) return null;
+  const cx=clamp(Math.floor(e.x/size),0,field.cols-1),cy=clamp(Math.floor(e.y/size),0,field.rows-1);
+  const cur=cy*field.cols+cx,curDist=field.dist[cur];
+  let best=-1,bestDist=curDist<0?Infinity:curDist;
+  for(const [dx,dy] of ENEMY_PATH_DIRS){
+    const nx=cx+dx,ny=cy+dy;
+    if(nx<0||ny<0||nx>=field.cols||ny>=field.rows) continue;
+    const ni=ny*field.cols+nx,nd=field.dist[ni];
+    if(!field.walk[ni]||nd<0||nd>=bestDist) continue;
+    if(dx&&dy&&(!field.walk[cy*field.cols+nx]||!field.walk[ny*field.cols+cx])) continue;
+    best=ni;bestDist=nd;
+  }
+  if(best<0){
+    let score=Infinity;
+    for(let oy=-2;oy<=2;oy++) for(let ox=-2;ox<=2;ox++){
+      const nx=cx+ox,ny=cy+oy;
+      if(nx<0||ny<0||nx>=field.cols||ny>=field.rows) continue;
+      const ni=ny*field.cols+nx,nd=field.dist[ni];
+      if(!field.walk[ni]||nd<0) continue;
+      const candidate=nd+Math.hypot(ox,oy)*.2;
+      if(candidate<score){score=candidate;best=ni;}
+    }
+  }
+  if(best<0) return null;
+  const tx=clamp((best%field.cols+.5)*size,e.r+12,G.arena.w-e.r-12);
+  const ty=clamp((Math.floor(best/field.cols)+.5)*size,e.r+16,G.arena.h-e.r-14);
+  const dx=tx-e.x,dy=ty-e.y,d=Math.hypot(dx,dy)||1;
+  return {x:dx/d,y:dy/d};
+}
+
 function resolveEnemyBlocks(e){
   const n=pushOutBlocks(e);
   if(!n) return false;
@@ -653,7 +761,7 @@ const G = {
   time:0, last:0,
   cv:null, ctx:null, view:{w:320,h:180}, scale:3,
   cam:{x:0,y:0}, arena:{w:720,h:520},
-  player:null, enemies:[], bullets:[], parts:[], slashes:[], pickups:[], zones:[],
+  player:null, enemies:[], bullets:[], parts:[], slashes:[], pickups:[], zones:[], pathFields:{},
   wave:0, waveTimer:0, phase:'fight',
   part:0, partCount:1, waveInPart:0, map:null, key:null, transit:null,
   core:{x:0,y:0,hp:0,max:100,r:16, appear:0},
@@ -1832,6 +1940,7 @@ function startPart(i){
   G.part = i;
   G.map = makeMap(L, i);
   applyMapSize();
+  G.pathFields={};
   G.enemies.length=0; G.bullets.length=0; G.parts.length=0; G.slashes.length=0;
   G.zones.length=0; G.ultFx.length=0; G.pickups.length=0;
   G.key=null; G.waveInPart=0; G.waveTimer=1.0; G.waveClearHealed=true; G.phase='fight';
@@ -1926,7 +2035,10 @@ function spawnEnemy(type, at){
     const ax=clamp(at.x, 20, W-20), ay=clamp(at.y, 20, H-20);
     if(free(ax,ay)){ x=ax; y=ay; }
   }
-  const e = { id:randi(1,9999), type, x, y, vx:0, vy:0, hp:T.hp, hpMax:T.hp, r:T.r,
+  const levelIndex=Math.max(0,LEVELS.findIndex(L=>L.id===G.levelId));
+  const hpScale=1+Math.max(0,levelIndex-14)*.025;
+  const scaledHp=Math.round(T.hp*hpScale);
+  const e = { id:randi(1,9999), type, x, y, vx:0, vy:0, r:T.r, hp:scaledHp, hpMax:scaledHp,
     cool:rand(.4,1.6), hurt:0, burn:0, slow:0, weak:0, charging:0, chargeCd:rand(1,3),
     blinkCd:rand(1,2.5), aimX:0, aimY:1, touchCd:0, dead:false, pull:0, mark:0,
     summonCd:rand(4,6), bossPhase:3 };
@@ -2002,6 +2114,7 @@ function doAttack(p){
   p.swing = 1; p.atkCount++;
   let dmg = A.dmg * HERO_BALANCE.damageMul;
   if(P.id==='karma') dmg *= (1 + p.karma*0.02) * (p.skillT>0 ? 1.6 : 1);
+  if(P.id==='space') dmg *= 1.5;
   if(p.skillT>0 && P.id==='order') dmg *= 1.25;
   if(P.id==='fate' && (p.skillT>0 || Math.random()<.25)) dmg = rollFate(p, dmg);
   if(A.mode==='melee'){
@@ -2063,8 +2176,8 @@ function doAttack(p){
       const a = ang + off + (P.id==='fate'?rand(-.08,.08):0);
       G.bullets.push({ x:p.x+Math.cos(ang)*8, y:p.y-10+Math.sin(ang)*8,
         vx:Math.cos(a)*A.speed, vy:Math.sin(a)*A.speed, r:A.r||3, dmg,
-        life:A.life||1.1, t:0, color:P.color, pierce:A.pierce||0, owner:'p', hit:[],
-        guide: (P.id==='fate' ? 3.2 : 5.5) });
+        life:A.life||1.1, t:0, color:P.color, pierce:P.id==='space'?2:(A.pierce||0), owner:'p', hit:[],
+        guide: (P.id==='space'?7.5:P.id==='fate'?3.2:5.5), wallPierce:P.id==='space' });
     }
   }
 }
@@ -2367,15 +2480,19 @@ function updateEnemies(dt){
     const slowMul = e.slow>0 ? .55 : 1;
     const dx = p.x-e.x, dy=(p.y-8)-(e.y-8), d = Math.hypot(dx,dy)||1;
     const ux=dx/d, uy=dy/d;
+    const route=enemyPathDirection(e), chaseX=route?route.x:ux, chaseY=route?route.y:uy;
+    const lineBlocked=(e.type==='shooter'||e.type==='sentinel')&&blockLine(e.x,e.y-8,p.x,p.y-8);
     e.aimX=ux; e.aimY=uy;
     if(e.type==='grunt' || e.type==='brute' || e.type==='siphon'){
       if(e.type==='siphon' && e.hp<e.hpMax) e.hp=Math.min(e.hpMax,e.hp+T.regen*dt);
       const sp = T.spd*slowMul*(e.type==='brute'&&e.charging>0?3.2:1);
-      e.vx = lerp(e.vx, ux*sp, .12); e.vy = lerp(e.vy, uy*sp, .12);
+      e.vx = lerp(e.vx, chaseX*sp, .12); e.vy = lerp(e.vy, chaseY*sp, .12);
     } else if(e.type==='shooter' || e.type==='sentinel'){
-      const want = 130;
-      const sp = T.spd*slowMul*(d>want+30?1:d<want-20?-1:0);
-      e.vx = lerp(e.vx, ux*sp, .1); e.vy = lerp(e.vy, uy*sp, .1);
+      const want = 130, approach=d>want+30||lineBlocked;
+      const moveX=approach?chaseX:d<want-20?-ux:0;
+      const moveY=approach?chaseY:d<want-20?-uy:0;
+      const sp = T.spd*slowMul*(approach?1:d<want-20?-1:0);
+      e.vx = lerp(e.vx, moveX*sp, .1); e.vy = lerp(e.vy, moveY*sp, .1);
       e.cool -= dt;
       if(e.cool<=0 && d<300){
         e.cool = T.shoot.cd;
@@ -2403,10 +2520,10 @@ function updateEnemies(dt){
         burst(e.x,e.y-8, 8, T.color, 90);
       }
       const sp = T.spd*slowMul;
-      e.vx = lerp(e.vx, ux*sp, .14); e.vy = lerp(e.vy, uy*sp, .14);
+      e.vx = lerp(e.vx, chaseX*sp, .14); e.vy = lerp(e.vy, chaseY*sp, .14);
     } else if(e.type==='boss'){
       const sp = T.spd*slowMul;
-      e.vx = lerp(e.vx, ux*sp, .06); e.vy = lerp(e.vy, uy*sp, .06);
+      e.vx = lerp(e.vx, chaseX*sp, .06); e.vy = lerp(e.vy, chaseY*sp, .06);
       e.cool -= dt;
       if(e.cool<=0){
         e.cool = T.shoot.cd;
@@ -2428,7 +2545,7 @@ function updateEnemies(dt){
         burst(e.x,e.y-12,36,T.color,210);
       }
       const sp=T.spd*slowMul*(phase===1?1.38:phase===2?1.16:1);
-      e.vx=lerp(e.vx,ux*sp,.055); e.vy=lerp(e.vy,uy*sp,.055);
+      e.vx=lerp(e.vx,chaseX*sp,.055); e.vy=lerp(e.vy,chaseY*sp,.055);
       e.cool-=dt;
       if(e.cool<=0){
         const count=phase===1?13:phase===2?9:T.shoot.burst;
@@ -2486,12 +2603,12 @@ function updateBullets(dt){
   const p=G.player;
   const frozen = G.freeze>0 || (p.skillT>0 && p.pw.id==='time');
   for(let i=G.bullets.length-1;i>=0;i--){
-    const b=G.bullets[i];
+    const b=G.bullets[i], oldX=b.x, oldY=b.y;
     b.t += dt;
     if(frozen && b.owner==='e'){  }
     else { b.x += b.vx*dt; b.y += b.vy*dt; }
     if(b.t>b.life || b.x<0||b.y<0||b.x>G.arena.w||b.y>G.arena.h){ G.bullets.splice(i,1); continue; }
-    if(!b.wallPierce && blockAt(b.x, b.y, (b.r||1)*0.5)){
+    if(!b.wallPierce && (blockAt(b.x, b.y, (b.r||1)*0.5) || blockLine(oldX,oldY,b.x,b.y,(b.r||1)*0.5))){
       burst(b.x, b.y, 3, b.color, 55); G.bullets.splice(i,1); continue;
     }
     if(b.owner==='p'){
@@ -2509,7 +2626,7 @@ function updateBullets(dt){
       }
       for(const e of G.enemies){
         if(b.hit.includes(e.id)) continue;
-        if(dist2(b.x,b.y,e.x,e.y-8) < (e.r+b.r+2)**2){
+        if(segmentCircleHit(oldX,oldY,b.x,b.y,e.x,e.y-8,e.r+b.r+2)){
           b.hit.push(e.id);
           let dmg=b.dmg;
           if(p.pw.id==='void'){ p.hp=Math.min(p.hpMax, p.hp + dmg*(p.skillT>0?.30:.12)); }
@@ -2710,7 +2827,7 @@ function endLevel(win){
     Save.save();
   }
   const chapterClear=win && !G.replayCleared && G.lv && G.lv.chIdx===G.lv.chTotal;
-  const finalClear=win && G.levelId==='origin';
+  const finalClear=win && G.levelId==='eternity_core';
   $('#res-title').textContent = finalClear ? '终末核心已净化' : chapterClear ? '章节已突破' : win ? '故障已修复' : '修复失败';
   $('#res-sub').textContent = finalClear ? '最终核心崩解 · 世界接缝重新闭合' : chapterClear ? `${G.lv.name} · 章节奖励：崩解度额外降低 8%` : win ? `${G.lv.name} · 接缝重新稳定` : `${G.lv.name} · 你被故障吞没了`;
   const mm=Math.floor(G.elapsed/60), ss=Math.floor(G.elapsed%60);
@@ -2728,7 +2845,7 @@ function endLevel(win){
   $('#btn-res-again').textContent = win ? '返回世界图' : '再 战 一 次';
   $('#scr-result').classList.remove('hidden');
   if(d.done.length>=LEVELS.length && win){
-    setTimeout(()=>{ $('#res-title').textContent='世界已稳定'; $('#res-sub').textContent=`${LEVELS.length} 个主关卡全部修复 · 原初核心归于平静`; }, 60);
+    setTimeout(()=>{ $('#res-title').textContent='世界已稳定'; $('#res-sub').textContent=`${LEVELS.length} 个主关卡全部修复 · 永恒核心归于平静`; }, 60);
   }
 }
 function worldCollapse(){
@@ -2868,6 +2985,10 @@ function buildMap(){
   $('#collapse-val').textContent = Math.floor(G.collapse)+'%';
   $('#chip-power').textContent = '权能 · ' + (POWER_MAP[G.power]?.name || '—');
   $('#chip-ult').textContent  = '大招 · ' + (ULT_MAP[G.ult]?.name || '—');
+  const nextIndex=LEVELS.findIndex(L=>!d.done.includes(L.id));
+  const focus=LEVELS[nextIndex<0?LEVELS.length-1:nextIndex];
+  const focusY=(focus.y/100)*canvas.clientHeight;
+  wrap.scrollTop=clamp(focusY-wrap.clientHeight*.52,0,Math.max(0,wrap.scrollHeight-wrap.clientHeight));
 }
 function syncAccent(){
   const P = POWER_MAP[G.power];
