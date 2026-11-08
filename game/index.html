@@ -2849,7 +2849,7 @@ function buildMap(){
     const isOpen = i===0 || d.done.includes(LEVELS[i-1].id) || isDone;
     if(isOpen) unlocked = i+1;
     const n=document.createElement('div');
-    n.className='node'+(L.tier==='origin'?' origin':'')+(L.tier==='deep'?' deep':'')+(isDone?' done':'')+(isOpen?'':' locked')+(isOpen&&!isDone?' cur':'');
+    n.className='node'+(L.tier==='origin'?' origin':'')+(L.tier==='deep'?' deep':'')+(L.tier==='post'?' post':'')+(isDone?' done':'')+(isOpen?'':' locked')+(isOpen&&!isDone?' cur':'');
     n.style.left=L.x+'%'; n.style.top=L.y+'%';
     const zone = `${L.parts}图`;
     n.innerHTML=`<div class="dot"></div><div class="nm">${L.name}</div>`+
