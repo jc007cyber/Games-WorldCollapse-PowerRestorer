@@ -2113,7 +2113,7 @@ function applyOrderFlame(e,duration,permanent,burnDuration){
   if(!ORDER_RANGED_ENEMIES.has(e.type)) e.touchCd=Math.max(e.touchCd||0,2.4);
 }
 function castOrderJudgment(p){
-  const orderDomainActive=p.pw.id==='order' && p.skillT>0 && G.zones.some(z=>z.kind==='order');
+  const orderDomainActive=isOrderDomainActive(p);
   const orderBonus=orderDomainActive?15:0;
   const flameDuration=7+orderBonus;
   const burnDuration=7+orderBonus;
@@ -2190,7 +2190,11 @@ function warShockwave(p,radius,damage,slow,knockback,duration){
   G.shake=Math.max(G.shake,9);
 }
 function isOrderDomainActive(p){
-  return !!(p && p.pw.id==='order' && p.skillT>0 && G.zones.some(z=>z.kind==='order'));
+  return !!(
+    p && p.pw && p.pw.id==='order' &&
+    p.skillT>0 &&
+    G.zones.some(z=>z.kind==='order' && z.t<z.dur)
+  );
 }
 function doAttack(p){
   const P = p.pw, A = P.atk, t=G.time;
