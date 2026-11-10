@@ -358,7 +358,7 @@ const POWERS = [
     weapon:'业报之镰', tagline:'以因果之镰，收割罪业',
     atk:{mode:'melee', dmg:26, cd:.40, range:46, arc:1.5, kb:130,
          blade:{mul:.55, speed:330, life:1.1, r:4}},
-    passive:'每次击破累积 1 层「业」，每层提升 2% 镰刀伤害（上限 20 层）',
+    passive:'每次命中累积 1 层「业」，每层提升 2% 镰刀伤害（上限 50 层）',
     skill:{ name:'业力凝冥', duration:60, cooldown:90,
       desc:'镰刀伤害 +60% 并附加灼烧；背后凝结死神虚影，使目标虚弱、移动迟缓；画面浮现暗角与紫色滤镜。' },
     brief:'近战 · 高爆发 · 持续灼烧' },
@@ -772,6 +772,7 @@ const G = {
   stopDur:0, stopIntro:0,
   ultFx:[],
   orderEclipseT:0, orderEclipseBurnT:0,
+  orderJudgmentMissed:false,
   ultReadyFx:0
 };
 Save.load();
@@ -2081,6 +2082,9 @@ function burst(x,y,n,color,sp){ for(let i=0;i<n;i++) G.parts.push(mkPart(x,y,col
 function damageEnemy(e, dmg, opt){
   if(!e || e.dead) return;
   opt = opt||{};
+  if(G.player && G.player.pw.id==='karma' && !opt.silent){
+    G.player.karma=Math.min(50,(G.player.karma||0)+1);
+  }
   const T = ETYPES[e.type];
   let d = dmg;
   if(e.weak>0) d *= 1.2;
@@ -2091,7 +2095,6 @@ function damageEnemy(e, dmg, opt){
   if(e.hp<=0 && !e.dead){
     e.dead = true; G.kills++;
     G.player.ult = clamp(G.player.ult + (T.boss?40:7), 0, 100);
-    if(G.player.pw.id==='karma') G.player.karma = Math.min(20, G.player.karma+1);
     burst(e.x, e.y-8, T.boss?60:18, T.color, T.boss?260:170);
     if(T.boss){ G.shake=16; flash('#fff',.5); }
     if(e.type==='boss'){ $('#bossbar').classList.remove('on'); }
@@ -2115,7 +2118,11 @@ function applyOrderFlame(e,duration,permanent,burnDuration){
 function castOrderJudgment(p){
   const flameDuration=7;
   const burnDuration=7;
-  const annihilation=Math.random()<.5;
+  const guaranteedAnnihilation=!!G.orderJudgmentMissed;
+  const annihilation=guaranteedAnnihilation || Math.random()<.5;
+  G.orderJudgmentMissed=!annihilation;
+  // Reflect the actual Order Judgment result in the small label under the ultimate button.
+  $('#b-ult-n').textContent=annihilation?'秩序焚灭':'秩序审判';
   G.bullets=G.bullets.filter(b=>b.owner!=='e');
   if(annihilation){
     G.orderEclipseT=30;
@@ -2129,7 +2136,7 @@ function castOrderJudgment(p){
       const y=G.arena.h*(i+.5)/6;
       G.slashes.push({x:G.player.x,y,a:0,arc:0,r:0,t:0,dur:.62,color:'#fff2c9',beam:true,w:G.arena.w});
     }
-    toast('秩序焚灭 · 全场肃清 · 后续30秒秩序封印');
+    toast(guaranteedAnnihilation ? '秩序焚灭 · 第二次审判必定触发' : '秩序焚灭 · 全场肃清 · 后续30秒秩序封印');
     flash('#fff2c9',.8);
     G.shake=24;
   } else {
@@ -2147,7 +2154,7 @@ function castOrderJudgment(p){
       }
       G.slashes.push({x:e.x,y:e.y-8,a:0,arc:TAU,r:Math.max(24,e.r+12),t:0,dur:.48,color:'#cfe4ff'});
     }
-    toast('秩序审判 · 秩序之炎降临');
+    toast('秩序审判 · 秩序之炎降临 · 下次必定秩序焚灭');
     flash('#cfe4ff',.62);
     G.shake=18;
   }
@@ -2340,14 +2347,20 @@ function trySkill(p){
       }
     }
     // During Order Annihilation's 30-second spawn window, extend the burn applied to future spawns too.
-    if(G.orderEclipseT>0 && G.orderEclipseBurnT>0){
-      G.orderEclipseBurnT+=15;
-      burnExtended++;
+    let futureFlameWindowExtended=false;
+    if(G.orderEclipseT>0){
+      G.orderEclipseT+=15;
+      futureFlameWindowExtended=true;
+      if(G.orderEclipseBurnT>0){
+        G.orderEclipseBurnT+=15;
+        burnExtended++;
+      }
     }
-    if(flameExtended>0 || burnExtended>0){
+    if(flameExtended>0 || burnExtended>0 || futureFlameWindowExtended){
       const parts=[];
       if(flameExtended>0) parts.push('秩序之炎 +15秒');
       if(burnExtended>0) parts.push('秩序燃烧 +15秒');
+      if(futureFlameWindowExtended) parts.push('后续刷怪秩序之炎覆盖时间 +15秒');
       toast('秩序领域延长 · '+parts.join(' · '));
     }
   }
@@ -2908,6 +2921,10 @@ function updateHud(){
     passive.classList.remove('hidden');
     passive.textContent=p.warReady?'破军震荡 · READY':`战意 ${p.warHits}/4`;
     passive.style.color=p.warReady?'#ffe0b0':p.pw.color;
+  } else if(p.pw.id==='karma'){
+    passive.classList.remove('hidden');
+    passive.textContent=`业层 ${p.karma||0}/50 · 伤害 +${((p.karma||0)*2).toFixed(0)}%`;
+    passive.style.color=p.pw.color;
   } else passive.classList.add('hidden');
   $('#hud-collapse').style.width = G.collapse+'%';
   $('#hud-collapse-v').textContent = Math.floor(G.collapse)+'%';
