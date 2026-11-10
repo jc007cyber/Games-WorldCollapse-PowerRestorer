@@ -2576,7 +2576,7 @@ function updateEnemies(dt){
     }
     e.hurt = Math.max(0, e.hurt-dt); e.burn = Math.max(0,e.burn-dt);
     e.slow = Math.max(0,e.slow-dt); e.weak = Math.max(0,e.weak-dt);
-    e.touchCd -= dt*(orderFlameActive?.25:1);
+    e.touchCd -= dt*(orderFlameActive && !rangedEnemy ? .25 : 1);
     if(e.burn>0) e.hp -= 9*dt;
     if(e.dead) continue;
     if(e.pull>0){
@@ -2677,7 +2677,7 @@ function updateEnemies(dt){
       $('#boss-hp').style.transform=`scaleX(${clamp(e.hp/e.hpMax,0,1)})`;
     }
     if(e.type==='brute'){
-      e.chargeCd -= dt;
+      e.chargeCd -= dt*(orderFlameActive ? .25 : 1);
       if(e.charging>0){ e.charging -= dt; }
       else if(e.chargeCd<=0 && d<220){ e.charging = T.charge.dur; e.chargeCd = T.charge.cd; burst(e.x,e.y-8,10,'#ffd76b',120); }
     }
