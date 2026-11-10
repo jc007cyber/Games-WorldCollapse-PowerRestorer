@@ -2128,16 +2128,6 @@ function castOrderJudgment(p){
   // This cast consumes the result prepared after the previous use (or at level start).
   const annihilation=!!G.orderNextAnnihilation;
   const guaranteedAnnihilation=!!G.orderNextGuaranteed;
-  // Prepare the next cast immediately: a normal Judgment guarantees Annihilation next;
-  // an Annihilation rolls a fresh 50/50 result. No random roll decides the current cast.
-  if(annihilation){
-    G.orderNextAnnihilation=Math.random()<.5;
-    G.orderNextGuaranteed=false;
-  } else {
-    G.orderNextAnnihilation=true;
-    G.orderNextGuaranteed=true;
-  }
-  $('#b-ult-n').textContent=G.orderNextAnnihilation?'秩序焚灭':'秩序审判';
   G.bullets=G.bullets.filter(b=>b.owner!=='e');
   if(annihilation){
     G.orderEclipseT=30;
@@ -2173,6 +2163,15 @@ function castOrderJudgment(p){
     flash('#cfe4ff',.62);
     G.shake=18;
   }
+  // After this cast resolves, decide and display the next cast's pre-rolled result.
+  if(annihilation){
+    G.orderNextAnnihilation=Math.random()<.5;
+    G.orderNextGuaranteed=false;
+  } else {
+    G.orderNextAnnihilation=true;
+    G.orderNextGuaranteed=true;
+  }
+  $('#b-ult-n').textContent=G.orderNextAnnihilation?'秩序焚灭':'秩序审判';
 }
 
 function hurtPlayer(dmg){
