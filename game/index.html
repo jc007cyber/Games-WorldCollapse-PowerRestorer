@@ -236,7 +236,7 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
     <section class="screen hidden" id="scr-ult">
       <div class="topbar">
         <div class="sect-h" style="margin:0">选择大招<small>大招独立于权能，通过战斗充能释放</small></div>
-        <div style="color:var(--dim);font-size:clamp(10px,2.4vmin,13px);letter-spacing:.1em">2 / 2</div>
+        <div id="ult-screen-step" style="color:var(--dim);font-size:clamp(10px,2.4vmin,13px);letter-spacing:.1em">2 / 2</div>
       </div>
       <div class="cardwrap" id="ult-list"></div>
       <div class="detail" id="ult-detail">选择一项大招以查看效果</div>
@@ -248,9 +248,10 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
     <section class="screen hidden" id="scr-map">
       <div class="topbar">
         <div class="sect-h" style="margin:0">世界故障图<small id="map-sub">点击故障点进入修复作战</small></div>
-        <div style="display:flex;gap:6px">
-          <button class="pxbtn ghost" id="btn-change-power" style="padding:.5em .8em;font-size:clamp(10px,2.4vmin,13px)">更换英雄</button>
-          <button class="pxbtn ghost" id="btn-reset" style="padding:.5em .8em;font-size:clamp(10px,2.4vmin,13px)">重置存档</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:65%">
+          <button class="pxbtn ghost" id="btn-change-power" style="padding:.45em .7em;font-size:clamp(9px,2.1vmin,12px);white-space:nowrap">更换英雄</button>
+          <button class="pxbtn ghost" id="btn-change-ult" style="padding:.45em .7em;font-size:clamp(9px,2.1vmin,12px);white-space:nowrap">更换大招</button>
+          <button class="pxbtn ghost" id="btn-reset" style="padding:.45em .7em;font-size:clamp(9px,2.1vmin,12px);white-space:nowrap">重置存档</button>
         </div>
       </div>
       <div class="collapse">
@@ -2969,6 +2970,8 @@ function worldCollapse(){
 }
 let powerReturnToMap = false;
 let powerBeforeMapChange = null;
+let ultReturnToMap = false;
+let ultBeforeMapChange = null;
 function buildPowerCards(){
   const wrap = $('#power-list'); wrap.innerHTML='';
   POWERS.forEach(P=>{
@@ -3034,9 +3037,11 @@ function hexA(hex,a){
 }
 function buildUltCards(){
   const wrap=$('#ult-list'); wrap.innerHTML='';
+  $('#btn-ult-next').disabled=true;
   ULTS.forEach(U=>{
     const el=document.createElement('div');
-    el.className='pcard'; el.style.setProperty('--pc',U.color); el.style.setProperty('--pc-soft',hexA(U.color,.25));
+    el.className='pcard'; el.dataset.ultId=U.id;
+    el.style.setProperty('--pc',U.color); el.style.setProperty('--pc-soft',hexA(U.color,.25));
     el.innerHTML = `<canvas class="glyph" width="48" height="48"></canvas>
       <div><h3>${U.name}</h3><div class="tag">${U.tag} · ${U.effect}</div><p>${U.desc.slice(0,42)}…</p></div>
       <div class="stat">ULT</div>`;
@@ -3049,6 +3054,10 @@ function buildUltCards(){
     });
     wrap.appendChild(el);
   });
+  if(G.ult){
+    const selected=wrap.querySelector(`[data-ult-id="${G.ult}"]`);
+    if(selected) selected.click();
+  }
 }
 function drawUltGlyph(cv,U){
   const g=cv.getContext('2d'); g.imageSmoothingEnabled=false;
@@ -3125,17 +3134,42 @@ function setupUI(){
     if(!G.power) return;
     Save.data.power=G.power; Save.save();
     if(powerReturnToMap){ powerReturnToMap=false; powerBeforeMapChange=null; syncAccent(); buildMap(); showScreen('map'); return; }
+    $('#ult-screen-step').textContent='2 / 2';
+    $('#btn-ult-back').textContent='返 回';
+    $('#btn-ult-next').textContent='进 入 世 界';
     buildUltCards(); showScreen('ult');
   });
-  $('#btn-ult-back').addEventListener('click', ()=>showScreen('power'));
+  $('#btn-ult-back').addEventListener('click', ()=>{
+    if(ultReturnToMap){
+      G.ult=ultBeforeMapChange;
+      ultReturnToMap=false; ultBeforeMapChange=null;
+      $('#ult-screen-step').textContent='2 / 2';
+      $('#btn-ult-back').textContent='返 回';
+      $('#btn-ult-next').textContent='进 入 世 界';
+      buildMap(); showScreen('map'); return;
+    }
+    showScreen('power');
+  });
   $('#btn-ult-next').addEventListener('click', ()=>{
     if(!G.ult) return;
-    Save.data.ult=G.ult; Save.data.collapse=G.collapse; Save.save();
+    Save.data.ult=G.ult;
+    if(ultReturnToMap){
+      ultReturnToMap=false; ultBeforeMapChange=null;
+      Save.save(); buildMap(); showScreen('map'); return;
+    }
+    Save.data.collapse=G.collapse; Save.save();
     buildMap(); showScreen('map');
   });
   $('#btn-change-power').addEventListener('click', ()=>{
     powerReturnToMap=true; powerBeforeMapChange=G.power;
     buildPowerCards(); showScreen('power');
+  });
+  $('#btn-change-ult').addEventListener('click', ()=>{
+    ultReturnToMap=true; ultBeforeMapChange=G.ult;
+    $('#ult-screen-step').textContent='更换大招';
+    $('#btn-ult-back').textContent='取 消 更 换';
+    $('#btn-ult-next').textContent='确 认 更 换';
+    buildUltCards(); showScreen('ult');
   });
   $('#btn-reset').addEventListener('click', ()=>{
     if(confirm('确定重置存档？所有已修复的故障点将重新出现。')){ Save.reset(); G.power=null; G.ult=null; G.collapse=20; showScreen('title'); }
