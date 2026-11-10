@@ -386,9 +386,9 @@ const POWERS = [
     weapon:'律令之剑', tagline:'万物各行其位，各守其序',
     atk:{mode:'melee', dmg:23, cd:.34, range:48, arc:1.45, kb:110,
          blade:{mul:.5, speed:360, life:1.2, r:5}},
-    passive:'连续命中同一目标可叠加「裁定」标记，满层额外造成一次审判伤害；秩序审判的秩序之炎与秩序燃烧持续时间 +15 秒',
+    passive:'连续命中同一目标叠加「裁定」标记（最多 3 层），第 4 次命中触发额外审判伤害。',
     skill:{ name:'秩序领域', duration:40, cooldown:15,
-      desc:'展开秩序领域：领域内敌人减速 40%、受到的伤害加深 30%，自身攻击附带律令斩击。' },
+      desc:'展开秩序领域：领域内敌人移动速度降低 40%、受到伤害增加 30%；自身攻击附带律令斩击。领域激活期间触发的秩序之炎与秩序燃烧持续时间各增加 15 秒。' },
     brief:'近战 · 领域 · 稳定增伤' },
   { id:'space', name:'空间之权', color:'#35d6ff', color2:'#0b6f96', metal:'#c8f6ff',
     weapon:'裂隙指环', tagline:'两点之间，不必路过中间',
@@ -427,7 +427,7 @@ const ULTS = [
     desc:'掷出命运的天平：随机轰击全场 24 次裁决，每一次的结果都由骰子决定。',
     effect:'24 次随机天罚轰击' },
   { id:'u_order', name:'秩序审判', color:'#cfe4ff', tag:'扫荡',
-    desc:'宣告最终审判：50% 概率化为秩序焚灭。秩序审判对全场造成高额伤害，每个敌人有 75% 概率被直接斩杀；秩序焚灭直接清场，并污染随后 30 秒刷新的敌人。',
+    desc:'宣告最终审判：50% 概率化为秩序焚灭。秩序审判对全场造成高额伤害、附加 7 秒秩序之炎与秩序燃烧，每个敌人有 75% 概率被直接斩杀；秩序焚灭直接清场，并使随后 30 秒刷新的敌人获得永久秩序之炎与 7 秒秩序燃烧。秩序领域激活时，两种计时效果各延长 15 秒。',
     effect:'50% 秩序焚灭 · 75% 斩杀 · 全场秩序压制' },
   { id:'u_space', name:'空间坍缩', color:'#35d6ff', tag:'聚怪',
     desc:'在战场中心撕裂巨隙：吸附全场敌人，随后坍缩成一点引爆。',
@@ -1569,6 +1569,9 @@ function drawEnemy(e){
     px(x-18,yy-4,12,6,dark); px(x+6,yy-4,12,6,dark);
   }
   if(e.burn>0 && Math.floor(t*8)%2===0){ pxc(e.x+randi(-4,4), e.y-10-randi(0,12), 1, '#ff9d4d', .9); }
+  if(e.mark>0){
+    for(let i=0;i<Math.min(3,e.mark);i++) pxo(x-3+i*3,yy-29,2,2,'#ffe9a8',.95);
+  }
   if(hasOrderFlame(e)){
     ring(x,y-9,T.r+7,'#dceaff',.42+.12*Math.sin(t*9+e.id),1);
     for(let i=0;i<3;i++){
@@ -1849,6 +1852,14 @@ function drawFx(){
   for(const z of G.zones){
     const a = z.t/z.dur;
     ring(z.x, z.y, z.r, z.color, .18+.10*Math.sin(G.time*4), 2);
+    if(z.kind==='order'){
+      ring(z.x,z.y,z.r*.72,'#fff2c9',.10+.06*Math.sin(G.time*6),1);
+      for(let i=0;i<6;i++){
+        const ang=G.time*.55+i*TAU/6;
+        const rr=z.r*(.78+.08*Math.sin(G.time*3+i));
+        px(z.x+Math.cos(ang)*rr,z.y+Math.sin(ang)*rr,2,2,'#fff2c9',.6);
+      }
+    }
     ring(z.x, z.y, z.r-3, z.color, .10, 1);
     pxc(z.x, z.y, z.r, z.color, .05);
     for(let i=0;i<8;i++){
@@ -2067,6 +2078,7 @@ function mkPart(x,y,color,o){
 }
 function burst(x,y,n,color,sp){ for(let i=0;i<n;i++) G.parts.push(mkPart(x,y,color,{sp:sp||rand(40,140), life:rand(.25,.7)})); }
 function damageEnemy(e, dmg, opt){
+  if(!e || e.dead) return;
   opt = opt||{};
   const T = ETYPES[e.type];
   let d = dmg;
@@ -2100,7 +2112,8 @@ function applyOrderFlame(e,duration,permanent,burnDuration){
   if(!ORDER_RANGED_ENEMIES.has(e.type)) e.touchCd=Math.max(e.touchCd||0,2.4);
 }
 function castOrderJudgment(p){
-  const orderBonus=p.pw.id==='order'?15:0;
+  const orderDomainActive=p.pw.id==='order' && p.skillT>0 && G.zones.some(z=>z.kind==='order');
+  const orderBonus=orderDomainActive?15:0;
   const flameDuration=7+orderBonus;
   const burnDuration=7+orderBonus;
   const annihilation=Math.random()<.5;
@@ -2127,7 +2140,7 @@ function castOrderJudgment(p){
     }
     for(const e of G.enemies){
       if(e.dead) continue;
-      applyOrderFlame(e,flameDuration,false,0);
+      applyOrderFlame(e,flameDuration,false,burnDuration);
       if(Math.random()<.75){
         damageEnemy(e,e.hp+1,{big:true,trueDmg:true});
       } else {
@@ -2175,6 +2188,9 @@ function warShockwave(p,radius,damage,slow,knockback,duration){
   }
   G.shake=Math.max(G.shake,9);
 }
+function isOrderDomainActive(p){
+  return !!(p && p.pw.id==='order' && p.skillT>0 && G.zones.some(z=>z.kind==='order'));
+}
 function doAttack(p){
   const P = p.pw, A = P.atk, t=G.time;
   const ang = p.aimAng;
@@ -2220,7 +2236,20 @@ function doAttack(p){
       const kb = A.kb||100;
       e.vx += dx/d*kb; e.vy += dy/d*kb;
       if(p.skillT>0 && P.id==='karma'){ e.burn = Math.max(e.burn, 3); e.weak = Math.max(e.weak, 4); e.slow = Math.max(e.slow, 4); }
-      if(P.id==='order'){ e.mark++; if(e.mark>=4){ e.mark=0; damageEnemy(e, dmg*.8, {big:true}); } }
+      if(P.id==='order' && !e.dead){
+        e.mark=(e.mark||0)+1;
+        if(e.mark>=4){
+          e.mark=0;
+          damageEnemy(e,dmg*.8,{big:true});
+          G.slashes.push({x:e.x,y:e.y-8,a:ea,arc:1.35,r:e.r+15,t:0,dur:.28,color:'#fff2c9'});
+          burst(e.x,e.y-8,8,'#ffe9a8',110);
+        }
+        if(!e.dead && isOrderDomainActive(p) && dist2(e.x,e.y,p.x,p.y)<86*86){
+          damageEnemy(e,dmg*.5,{big:true});
+          G.slashes.push({x:e.x,y:e.y-8,a:ea,arc:.95,r:e.r+19,t:0,dur:.22,color:'#ffe9a8'});
+          G.slashes.push({x:hpx,y:hpy,a:ea,arc:.55,r:Math.max(10,e.r+9),t:0,dur:.16,color:'#ffffff'});
+        }
+      }
       if(P.id==='void') p.hp = Math.min(p.hpMax, p.hp + dmg*.12);
     }
     if(P.id==='war' && meleeHits>0){
@@ -2556,7 +2585,8 @@ function updateEnemies(dt){
       e.x += dx/d*260*dt; e.y += dy/d*260*dt;
     }
     if(frozen){ resolveEnemyBlocks(e); continue; }
-    const slowMul = e.slow>0 ? .55 : 1;
+    const inOrderDomain=G.zones.some(z=>z.kind==='order' && dist2(e.x,e.y,z.x,z.y)<z.r*z.r);
+    const slowMul = Math.min(e.slow>0 ? .55 : 1, inOrderDomain ? .60 : 1);
     const dx = p.x-e.x, dy=(p.y-8)-(e.y-8), d = Math.hypot(dx,dy)||1;
     const ux=dx/d, uy=dy/d;
     const route=enemyPathDirection(e), chaseX=route?route.x:ux, chaseY=route?route.y:uy;
