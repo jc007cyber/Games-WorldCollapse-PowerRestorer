@@ -389,7 +389,7 @@ const POWERS = [
          blade:{mul:.5, speed:360, life:1.2, r:5}},
     passive:'连续命中同一目标叠加「裁定」标记（最多 3 层），第 4 次命中触发额外审判伤害。',
     skill:{ name:'秩序领域', duration:40, cooldown:15,
-      desc:'展开秩序领域：领域内敌人移动速度降低 40%、受到伤害增加 30%；自身攻击附带律令斩击。领域激活期间触发的秩序之炎与秩序燃烧持续时间各增加 15 秒。' },
+      desc:'展开秩序领域：领域内敌人移动速度降低 40%、受到伤害增加 30%；自身攻击附带律令斩击。敌人开始燃烧后再次施放领域，每次使当前生效的秩序之炎与秩序燃烧各延长 15 秒，可重复叠加；未开始燃烧时施放不预存加成。' },
     brief:'近战 · 领域 · 稳定增伤' },
   { id:'space', name:'空间之权', color:'#35d6ff', color2:'#0b6f96', metal:'#c8f6ff',
     weapon:'裂隙指环', tagline:'两点之间，不必路过中间',
@@ -428,7 +428,7 @@ const ULTS = [
     desc:'掷出命运的天平：随机轰击全场 24 次裁决，每一次的结果都由骰子决定。',
     effect:'24 次随机天罚轰击' },
   { id:'u_order', name:'秩序审判', color:'#cfe4ff', tag:'扫荡',
-    desc:'宣告最终审判：50% 概率化为秩序焚灭。秩序审判对全场造成高额伤害、附加 7 秒秩序之炎与秩序燃烧，每个敌人有 75% 概率被直接斩杀；秩序焚灭直接清场，并使随后 30 秒刷新的敌人获得永久秩序之炎与 7 秒秩序燃烧。秩序领域激活时，两种计时效果各延长 15 秒。',
+    desc:'宣告最终审判：50% 概率化为秩序焚灭。秩序审判对全场造成高额伤害、附加 7 秒秩序之炎与秩序燃烧，每个敌人有 75% 概率被直接斩杀；秩序焚灭直接清场，并使随后 30 秒刷新的敌人获得永久秩序之炎与 7 秒秩序燃烧。燃烧开始后再次施放秩序领域，每次使当前生效的秩序之炎与秩序燃烧各延长 15 秒。',
     effect:'50% 秩序焚灭 · 75% 斩杀 · 全场秩序压制' },
   { id:'u_space', name:'空间坍缩', color:'#35d6ff', tag:'聚怪',
     desc:'在战场中心撕裂巨隙：吸附全场敌人，随后坍缩成一点引爆。',
@@ -2113,10 +2113,8 @@ function applyOrderFlame(e,duration,permanent,burnDuration){
   if(!ORDER_RANGED_ENEMIES.has(e.type)) e.touchCd=Math.max(e.touchCd||0,2.4);
 }
 function castOrderJudgment(p){
-  const orderDomainActive=isOrderDomainActive(p);
-  const orderBonus=orderDomainActive?15:0;
-  const flameDuration=7+orderBonus;
-  const burnDuration=7+orderBonus;
+  const flameDuration=7;
+  const burnDuration=7;
   const annihilation=Math.random()<.5;
   G.bullets=G.bullets.filter(b=>b.owner!=='e');
   if(annihilation){
@@ -2327,6 +2325,31 @@ function trySkill(p){
     const zone=G.zones.find(z=>z.kind==='order');
     if(zone){ zone.x=p.x; zone.y=p.y; zone.r=78; zone.t=0; zone.dur=S.duration; zone.color=P.color; zone.follow=true; }
     else G.zones.push({kind:'order', x:p.x, y:p.y, r:78, t:0, dur:S.duration, color:P.color, follow:true});
+
+    // Each Order Domain cast after burning has begun extends the active timers by 15 seconds.
+    let flameExtended=0, burnExtended=0;
+    for(const e of G.enemies){
+      if(e.dead) continue;
+      if(!e.orderFlamePermanent && (e.orderFlameT||0)>0){
+        e.orderFlameT+=15;
+        flameExtended++;
+      }
+      if((e.orderBurnT||0)>0){
+        e.orderBurnT+=15;
+        burnExtended++;
+      }
+    }
+    // During Order Annihilation's 30-second spawn window, extend the burn applied to future spawns too.
+    if(G.orderEclipseT>0 && G.orderEclipseBurnT>0){
+      G.orderEclipseBurnT+=15;
+      burnExtended++;
+    }
+    if(flameExtended>0 || burnExtended>0){
+      const parts=[];
+      if(flameExtended>0) parts.push('秩序之炎 +15秒');
+      if(burnExtended>0) parts.push('秩序燃烧 +15秒');
+      toast('秩序领域延长 · '+parts.join(' · '));
+    }
   }
   if(P.id==='void'){ G.zones.push({kind:'void', x:p.x, y:p.y, r:70, t:0, dur:S.duration, color:P.color, follow:true}); }
   if(P.id==='war'){
