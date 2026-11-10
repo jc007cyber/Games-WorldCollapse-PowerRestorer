@@ -236,7 +236,7 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
     <section class="screen hidden" id="scr-ult">
       <div class="topbar">
         <div class="sect-h" style="margin:0">选择大招<small>大招独立于权能，通过战斗充能释放</small></div>
-        <div style="color:var(--dim);font-size:clamp(10px,2.4vmin,13px);letter-spacing:.1em">2 / 2</div>
+        <div id="ult-screen-step" style="color:var(--dim);font-size:clamp(10px,2.4vmin,13px);letter-spacing:.1em">2 / 2</div>
       </div>
       <div class="cardwrap" id="ult-list"></div>
       <div class="detail" id="ult-detail">选择一项大招以查看效果</div>
@@ -248,9 +248,10 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
     <section class="screen hidden" id="scr-map">
       <div class="topbar">
         <div class="sect-h" style="margin:0">世界故障图<small id="map-sub">点击故障点进入修复作战</small></div>
-        <div style="display:flex;gap:6px">
-          <button class="pxbtn ghost" id="btn-change-power" style="padding:.5em .8em;font-size:clamp(10px,2.4vmin,13px)">更换英雄</button>
-          <button class="pxbtn ghost" id="btn-reset" style="padding:.5em .8em;font-size:clamp(10px,2.4vmin,13px)">重置存档</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:65%">
+          <button class="pxbtn ghost" id="btn-change-power" style="padding:.45em .7em;font-size:clamp(9px,2.1vmin,12px);white-space:nowrap">更换英雄</button>
+          <button class="pxbtn ghost" id="btn-change-ult" style="padding:.45em .7em;font-size:clamp(9px,2.1vmin,12px);white-space:nowrap">更换大招</button>
+          <button class="pxbtn ghost" id="btn-reset" style="padding:.45em .7em;font-size:clamp(9px,2.1vmin,12px);white-space:nowrap">重置存档</button>
         </div>
       </div>
       <div class="collapse">
@@ -386,9 +387,9 @@ const POWERS = [
     weapon:'律令之剑', tagline:'万物各行其位，各守其序',
     atk:{mode:'melee', dmg:23, cd:.34, range:48, arc:1.45, kb:110,
          blade:{mul:.5, speed:360, life:1.2, r:5}},
-    passive:'连续命中同一目标可叠加「裁定」标记，满层额外造成一次审判伤害',
+    passive:'连续命中同一目标叠加「裁定」标记（最多 3 层），第 4 次命中触发额外审判伤害。',
     skill:{ name:'秩序领域', duration:40, cooldown:15,
-      desc:'展开秩序领域：领域内敌人减速 40%、受到的伤害加深 30%，自身攻击附带律令斩击。' },
+      desc:'展开秩序领域：领域内敌人移动速度降低 40%、受到伤害增加 30%；自身攻击附带律令斩击。领域激活期间触发的秩序之炎与秩序燃烧持续时间各增加 15 秒。' },
     brief:'近战 · 领域 · 稳定增伤' },
   { id:'space', name:'空间之权', color:'#35d6ff', color2:'#0b6f96', metal:'#c8f6ff',
     weapon:'裂隙指环', tagline:'两点之间，不必路过中间',
@@ -427,8 +428,8 @@ const ULTS = [
     desc:'掷出命运的天平：随机轰击全场 24 次裁决，每一次的结果都由骰子决定。',
     effect:'24 次随机天罚轰击' },
   { id:'u_order', name:'秩序审判', color:'#cfe4ff', tag:'扫荡',
-    desc:'宣告最终审判：数道律令光柱横扫战场，被判定者有罪即死。',
-    effect:'多道光柱扫荡 + 审判伤害' },
+    desc:'宣告最终审判：50% 概率化为秩序焚灭。秩序审判对全场造成高额伤害、附加 7 秒秩序之炎与秩序燃烧，每个敌人有 75% 概率被直接斩杀；秩序焚灭直接清场，并使随后 30 秒刷新的敌人获得永久秩序之炎与 7 秒秩序燃烧。秩序领域激活时，两种计时效果各延长 15 秒。',
+    effect:'50% 秩序焚灭 · 75% 斩杀 · 全场秩序压制' },
   { id:'u_space', name:'空间坍缩', color:'#35d6ff', tag:'聚怪',
     desc:'在战场中心撕裂巨隙：吸附全场敌人，随后坍缩成一点引爆。',
     effect:'吸附聚怪 + 中心大爆' },
@@ -770,6 +771,7 @@ const G = {
   kills:0, elapsed:0,
   stopDur:0, stopIntro:0,
   ultFx:[],
+  orderEclipseT:0, orderEclipseBurnT:0,
   ultReadyFx:0
 };
 Save.load();
@@ -1568,6 +1570,19 @@ function drawEnemy(e){
     px(x-18,yy-4,12,6,dark); px(x+6,yy-4,12,6,dark);
   }
   if(e.burn>0 && Math.floor(t*8)%2===0){ pxc(e.x+randi(-4,4), e.y-10-randi(0,12), 1, '#ff9d4d', .9); }
+  if(e.mark>0){
+    for(let i=0;i<Math.min(3,e.mark);i++) pxo(x-3+i*3,yy-29,2,2,'#ffe9a8',.95);
+  }
+  if(hasOrderFlame(e)){
+    ring(x,y-9,T.r+7,'#dceaff',.42+.12*Math.sin(t*9+e.id),1);
+    for(let i=0;i<3;i++){
+      const a=t*2.1+i*TAU/3, rr=T.r+4+Math.sin(t*5+i)*2;
+      pxc(x+Math.cos(a)*rr,y-10+Math.sin(a)*rr,1,i%2?'#fff2c9':'#cfe4ff',.8);
+    }
+  }
+  if((e.orderBurnT||0)>0 && Math.floor(t*10)%2===0){
+    pxc(x+randi(-5,5),y-12-randi(0,14),2,'#ffb34d',.95);
+  }
   if(e.slow>0) pxo(e.x-6, e.y-2, 13, 2, '#6fa8ff', .5);
   if(e.weak>0) pxo(e.x-4, e.y-24, 9, 2, '#c9a6ff', .6);
   if(!T.boss && e.hp < e.hpMax){
@@ -1838,6 +1853,14 @@ function drawFx(){
   for(const z of G.zones){
     const a = z.t/z.dur;
     ring(z.x, z.y, z.r, z.color, .18+.10*Math.sin(G.time*4), 2);
+    if(z.kind==='order'){
+      ring(z.x,z.y,z.r*.72,'#fff2c9',.10+.06*Math.sin(G.time*6),1);
+      for(let i=0;i<6;i++){
+        const ang=G.time*.55+i*TAU/6;
+        const rr=z.r*(.78+.08*Math.sin(G.time*3+i));
+        px(z.x+Math.cos(ang)*rr,z.y+Math.sin(ang)*rr,2,2,'#fff2c9',.6);
+      }
+    }
     ring(z.x, z.y, z.r-3, z.color, .10, 1);
     pxc(z.x, z.y, z.r, z.color, .05);
     for(let i=0;i<8;i++){
@@ -1920,6 +1943,7 @@ function startLevel(id){
   G.waveInPart = 0; G.wave = 0; G.key = null;
   G.player = makePlayer(G.power);
   G.kills=0; G.elapsed=0;
+  G.orderEclipseT=0; G.orderEclipseBurnT=0;
   G.freeze=0; G.shake=0; G.flash=0;
   G.running = true; G.paused = false;
   $('#hud-lv').textContent = `${L.chapter} ${L.chIdx} · ${L.name}`;
@@ -2041,7 +2065,9 @@ function spawnEnemy(type, at){
   const e = { id:randi(1,9999), type, x, y, vx:0, vy:0, r:T.r, hp:scaledHp, hpMax:scaledHp,
     cool:rand(.4,1.6), hurt:0, burn:0, slow:0, weak:0, charging:0, chargeCd:rand(1,3),
     blinkCd:rand(1,2.5), aimX:0, aimY:1, touchCd:0, dead:false, pull:0, mark:0,
+    orderFlameT:0, orderFlamePermanent:false, orderBurnT:0,
     summonCd:rand(4,6), bossPhase:3 };
+  if(G.orderEclipseT>0) applyOrderFlame(e,0,true,G.orderEclipseBurnT||7);
   G.enemies.push(e);
   for(let i=0;i<8;i++) G.parts.push(mkPart(x, y-rand(0,10), T.color, {sp:rand(30,90), life:rand(.2,.5)}));
   return e;
@@ -2053,6 +2079,7 @@ function mkPart(x,y,color,o){
 }
 function burst(x,y,n,color,sp){ for(let i=0;i<n;i++) G.parts.push(mkPart(x,y,color,{sp:sp||rand(40,140), life:rand(.25,.7)})); }
 function damageEnemy(e, dmg, opt){
+  if(!e || e.dead) return;
   opt = opt||{};
   const T = ETYPES[e.type];
   let d = dmg;
@@ -2060,7 +2087,7 @@ function damageEnemy(e, dmg, opt){
   for(const z of G.zones) if(z.kind==='order' && dist2(e.x,e.y,z.x,z.y) < z.r*z.r) d *= 1.3;
   if(T.armor && !opt.trueDmg) d *= (1 - T.armor);
   e.hp -= d; e.hurt = .12;
-  burst(e.x, e.y-8, opt.big?10:5, T.color, opt.big?150:90);
+  if(!opt.silent) burst(e.x, e.y-8, opt.big?10:5, T.color, opt.big?150:90);
   if(e.hp<=0 && !e.dead){
     e.dead = true; G.kills++;
     G.player.ult = clamp(G.player.ult + (T.boss?40:7), 0, 100);
@@ -2070,6 +2097,64 @@ function damageEnemy(e, dmg, opt){
     if(e.type==='boss'){ $('#bossbar').classList.remove('on'); }
   }
 }
+
+const ORDER_RANGED_ENEMIES = new Set(['shooter','sentinel','boss','finalboss']);
+function hasOrderFlame(e){
+  return !!(e.orderFlamePermanent || (e.orderFlameT||0)>0);
+}
+function applyOrderFlame(e,duration,permanent,burnDuration){
+  if(permanent){
+    e.orderFlamePermanent=true;
+    e.orderFlameT=0;
+  } else if(!e.orderFlamePermanent){
+    e.orderFlameT=Math.max(e.orderFlameT||0,duration||0);
+  }
+  if(burnDuration>0) e.orderBurnT=Math.max(e.orderBurnT||0,burnDuration);
+  if(!ORDER_RANGED_ENEMIES.has(e.type)) e.touchCd=Math.max(e.touchCd||0,2.4);
+}
+function castOrderJudgment(p){
+  const orderDomainActive=isOrderDomainActive(p);
+  const orderBonus=orderDomainActive?15:0;
+  const flameDuration=7+orderBonus;
+  const burnDuration=7+orderBonus;
+  const annihilation=Math.random()<.5;
+  G.bullets=G.bullets.filter(b=>b.owner!=='e');
+  if(annihilation){
+    G.orderEclipseT=30;
+    G.orderEclipseBurnT=burnDuration;
+    for(const e of G.enemies){
+      if(e.dead) continue;
+      G.slashes.push({x:e.x,y:e.y-8,a:0,arc:TAU,r:Math.max(28,e.r+16),t:0,dur:.62,color:'#ffe9a8'});
+      damageEnemy(e,e.hp+1,{big:true,trueDmg:true});
+    }
+    for(let i=0;i<6;i++){
+      const y=G.arena.h*(i+.5)/6;
+      G.slashes.push({x:G.player.x,y,a:0,arc:0,r:0,t:0,dur:.62,color:'#fff2c9',beam:true,w:G.arena.w});
+    }
+    toast('秩序焚灭 · 全场肃清 · 后续30秒秩序封印');
+    flash('#fff2c9',.8);
+    G.shake=24;
+  } else {
+    for(let i=0;i<5;i++){
+      const y=G.arena.h*(i+.5)/5;
+      G.slashes.push({x:G.player.x,y,a:0,arc:0,r:0,t:0,dur:.58,color:'#cfe4ff',beam:true,w:G.arena.w});
+    }
+    for(const e of G.enemies){
+      if(e.dead) continue;
+      applyOrderFlame(e,flameDuration,false,burnDuration);
+      if(Math.random()<.75){
+        damageEnemy(e,e.hp+1,{big:true,trueDmg:true});
+      } else {
+        damageEnemy(e,Math.max(140,e.hpMax*.40),{big:true,trueDmg:true});
+      }
+      G.slashes.push({x:e.x,y:e.y-8,a:0,arc:TAU,r:Math.max(24,e.r+12),t:0,dur:.48,color:'#cfe4ff'});
+    }
+    toast('秩序审判 · 秩序之炎降临');
+    flash('#cfe4ff',.62);
+    G.shake=18;
+  }
+}
+
 function hurtPlayer(dmg){
   const p=G.player;
   if(p.inv>0 || p.dashT>0) return;
@@ -2103,6 +2188,13 @@ function warShockwave(p,radius,damage,slow,knockback,duration){
       {sp:rand(65,155),life:rand(.18,.42),size:1,g:18}));
   }
   G.shake=Math.max(G.shake,9);
+}
+function isOrderDomainActive(p){
+  return !!(
+    p && p.pw && p.pw.id==='order' &&
+    p.skillT>0 &&
+    G.zones.some(z=>z.kind==='order' && z.t<z.dur)
+  );
 }
 function doAttack(p){
   const P = p.pw, A = P.atk, t=G.time;
@@ -2149,7 +2241,20 @@ function doAttack(p){
       const kb = A.kb||100;
       e.vx += dx/d*kb; e.vy += dy/d*kb;
       if(p.skillT>0 && P.id==='karma'){ e.burn = Math.max(e.burn, 3); e.weak = Math.max(e.weak, 4); e.slow = Math.max(e.slow, 4); }
-      if(P.id==='order'){ e.mark++; if(e.mark>=4){ e.mark=0; damageEnemy(e, dmg*.8, {big:true}); } }
+      if(P.id==='order' && !e.dead){
+        e.mark=(e.mark||0)+1;
+        if(e.mark>=4){
+          e.mark=0;
+          damageEnemy(e,dmg*.8,{big:true});
+          G.slashes.push({x:e.x,y:e.y-8,a:ea,arc:1.35,r:e.r+15,t:0,dur:.28,color:'#fff2c9'});
+          burst(e.x,e.y-8,8,'#ffe9a8',110);
+        }
+        if(!e.dead && isOrderDomainActive(p) && dist2(e.x,e.y,p.x,p.y)<86*86){
+          damageEnemy(e,dmg*.5,{big:true});
+          G.slashes.push({x:e.x,y:e.y-8,a:ea,arc:.95,r:e.r+19,t:0,dur:.22,color:'#ffe9a8'});
+          G.slashes.push({x:hpx,y:hpy,a:ea,arc:.55,r:Math.max(10,e.r+9),t:0,dur:.16,color:'#ffffff'});
+        }
+      }
       if(P.id==='void') p.hp = Math.min(p.hpMax, p.hp + dmg*.12);
     }
     if(P.id==='war' && meleeHits>0){
@@ -2270,14 +2375,7 @@ function tryUlt(p){
       }
     }});
   } else if(id==='u_order'){
-    for(let k=0;k<4;k++){
-      const y = G.arena.h*(k+.5)/4;
-      G.slashes.push({x:G.player.x, y, a:0, arc:0, r:0, t:0, dur:.5, color:'#cfe4ff', beam:true, w:G.arena.w});
-      G.ultFx.push({t:0, dur:.5+k*.12, fn:(dt,o)=>{
-        if(o.done) return; o.done=true;
-        for(const e of G.enemies) if(Math.abs((e.y-8)-y) < 26) damageEnemy(e, 130, {big:true, trueDmg:true});
-      }});
-    }
+    castOrderJudgment(p);
   } else if(id==='u_space'){
     const cx=G.arena.w/2, cy=G.arena.h/2;
     for(const e of G.enemies) e.pull = 1.1;
@@ -2299,6 +2397,10 @@ function flash(color, a){ G.flash = a; G.flashColor = color; }
 function updateBattle(dt){
   const p = G.player, I = Input;
   G.elapsed += dt;
+  if(G.orderEclipseT>0){
+    G.orderEclipseT=Math.max(0,G.orderEclipseT-dt);
+    if(G.orderEclipseT===0) G.orderEclipseBurnT=0;
+  }
   if(!G.replayCleared){
     G.collapse = clamp(G.collapse + dt*0.12, 0, 100);
     if(G.collapse >= 100){ worldCollapse(); return; }
@@ -2467,24 +2569,36 @@ function updateEnemies(dt){
   const p = G.player;
   const frozen = G.freeze>0 || (p.skillT>0 && p.pw.id==='time');
   for(const e of G.enemies){
+    if(e.dead) continue;
     const T = ETYPES[e.type];
+    const orderFlameActive=hasOrderFlame(e);
+    const rangedEnemy=ORDER_RANGED_ENEMIES.has(e.type);
+    if(!e.orderFlamePermanent) e.orderFlameT=Math.max(0,(e.orderFlameT||0)-dt);
+    const orderBurnDt=Math.min(dt,Math.max(0,e.orderBurnT||0));
+    if(orderBurnDt>0){
+      e.orderBurnT=Math.max(0,e.orderBurnT-orderBurnDt);
+      damageEnemy(e,e.hpMax*.05*orderBurnDt,{trueDmg:true,silent:true});
+    }
     e.hurt = Math.max(0, e.hurt-dt); e.burn = Math.max(0,e.burn-dt);
-    e.slow = Math.max(0,e.slow-dt); e.weak = Math.max(0,e.weak-dt); e.touchCd -= dt;
+    e.slow = Math.max(0,e.slow-dt); e.weak = Math.max(0,e.weak-dt);
+    e.touchCd -= dt*(orderFlameActive && !rangedEnemy ? .25 : 1);
     if(e.burn>0) e.hp -= 9*dt;
+    if(e.dead) continue;
     if(e.pull>0){
       e.pull -= dt;
       const cx=G.arena.w/2, cy=G.arena.h/2, dx=cx-e.x, dy=cy-e.y, d=Math.hypot(dx,dy)||1;
       e.x += dx/d*260*dt; e.y += dy/d*260*dt;
     }
     if(frozen){ resolveEnemyBlocks(e); continue; }
-    const slowMul = e.slow>0 ? .55 : 1;
+    const inOrderDomain=G.zones.some(z=>z.kind==='order' && dist2(e.x,e.y,z.x,z.y)<z.r*z.r);
+    const slowMul = Math.min(e.slow>0 ? .55 : 1, inOrderDomain ? .60 : 1);
     const dx = p.x-e.x, dy=(p.y-8)-(e.y-8), d = Math.hypot(dx,dy)||1;
     const ux=dx/d, uy=dy/d;
     const route=enemyPathDirection(e), chaseX=route?route.x:ux, chaseY=route?route.y:uy;
     const lineBlocked=(e.type==='shooter'||e.type==='sentinel')&&blockLine(e.x,e.y-8,p.x,p.y-8);
     e.aimX=ux; e.aimY=uy;
     if(e.type==='grunt' || e.type==='brute' || e.type==='siphon'){
-      if(e.type==='siphon' && e.hp<e.hpMax) e.hp=Math.min(e.hpMax,e.hp+T.regen*dt);
+      if(e.type==='siphon' && !orderFlameActive && e.hp<e.hpMax) e.hp=Math.min(e.hpMax,e.hp+T.regen*dt);
       const sp = T.spd*slowMul*(e.type==='brute'&&e.charging>0?3.2:1);
       e.vx = lerp(e.vx, chaseX*sp, .12); e.vy = lerp(e.vy, chaseY*sp, .12);
     } else if(e.type==='shooter' || e.type==='sentinel'){
@@ -2493,8 +2607,8 @@ function updateEnemies(dt){
       const moveY=approach?chaseY:d<want-20?-uy:0;
       const sp = T.spd*slowMul*(approach?1:d<want-20?-1:0);
       e.vx = lerp(e.vx, moveX*sp, .1); e.vy = lerp(e.vy, moveY*sp, .1);
-      e.cool -= dt;
-      if(e.cool<=0 && d<300){
+      if(!orderFlameActive){ e.cool -= dt; }
+      if(!orderFlameActive && e.cool<=0 && d<300){
         e.cool = T.shoot.cd;
         const count=T.shoot.burst||1, base=Math.atan2(dy,dx);
         for(let shot=0;shot<count;shot++){
@@ -2524,8 +2638,8 @@ function updateEnemies(dt){
     } else if(e.type==='boss'){
       const sp = T.spd*slowMul;
       e.vx = lerp(e.vx, chaseX*sp, .06); e.vy = lerp(e.vy, chaseY*sp, .06);
-      e.cool -= dt;
-      if(e.cool<=0){
+      if(!orderFlameActive) e.cool -= dt;
+      if(!orderFlameActive && e.cool<=0){
         e.cool = T.shoot.cd;
         for(let i=0;i<T.shoot.burst;i++){
           const a = Math.atan2(dy,dx) + (i-(T.shoot.burst-1)/2)*.28;
@@ -2533,7 +2647,7 @@ function updateEnemies(dt){
             r:T.shoot.r, dmg:T.shoot.dmg, life:3.4, t:0, color:'#ff4d6a', pierce:0, owner:'e', hit:[]});
         }
       }
-      if(Math.random() < dt*0.25 && G.enemies.length<12) spawnEnemy(pick(['grunt','shooter','glitch']));
+      if(!orderFlameActive && Math.random() < dt*0.25 && G.enemies.length<12) spawnEnemy(pick(['grunt','shooter','glitch']));
       $('#bossbar').classList.add('on');
       $('#boss-n').textContent = T.name;
       $('#boss-hp').style.transform = `scaleX(${clamp(e.hp/e.hpMax,0,1)})`;
@@ -2546,8 +2660,8 @@ function updateEnemies(dt){
       }
       const sp=T.spd*slowMul*(phase===1?1.38:phase===2?1.16:1);
       e.vx=lerp(e.vx,chaseX*sp,.055); e.vy=lerp(e.vy,chaseY*sp,.055);
-      e.cool-=dt;
-      if(e.cool<=0){
+      if(!orderFlameActive) e.cool-=dt;
+      if(!orderFlameActive && e.cool<=0){
         const count=phase===1?13:phase===2?9:T.shoot.burst;
         const spread=phase===1?.14:phase===2?.20:.26;
         e.cool=T.shoot.cd*(phase===1?.72:phase===2?.88:1);
@@ -2559,7 +2673,7 @@ function updateEnemies(dt){
         }
       }
       e.summonCd-=dt;
-      if(phase<=2 && e.summonCd<=0 && G.enemies.length<10){
+      if(!orderFlameActive && phase<=2 && e.summonCd<=0 && G.enemies.length<10){
         e.summonCd=phase===1?4.5:6.5;
         spawnEnemy(pick(phase===1?['mirror','siphon','sentinel']:['mirror','sentinel']));
       }
@@ -2568,7 +2682,7 @@ function updateEnemies(dt){
       $('#boss-hp').style.transform=`scaleX(${clamp(e.hp/e.hpMax,0,1)})`;
     }
     if(e.type==='brute'){
-      e.chargeCd -= dt;
+      e.chargeCd -= dt*(orderFlameActive ? .25 : 1);
       if(e.charging>0){ e.charging -= dt; }
       else if(e.chargeCd<=0 && d<220){ e.charging = T.charge.dur; e.chargeCd = T.charge.cd; burst(e.x,e.y-8,10,'#ffd76b',120); }
     }
@@ -2581,11 +2695,11 @@ function updateEnemies(dt){
     }
     e.x = clamp(e.x, 12, G.arena.w-12);
     e.y = clamp(e.y, 16, G.arena.h-12);
-    if(d < e.r + p.r + 4 && e.touchCd<=0 &&
+    if(d < e.r + p.r + 4 && e.touchCd<=0 && !(orderFlameActive && rangedEnemy) &&
        !blockLine(e.x, e.y-8, p.x, p.y-8)){
       e.touchCd = .6;
       hurtPlayer(T.dmg * (e.type==='brute'&&e.charging>0 ? 1.4 : 1));
-      if(e.type==='siphon') e.hp=Math.min(e.hpMax,e.hp+10);
+      if(e.type==='siphon' && !orderFlameActive) e.hp=Math.min(e.hpMax,e.hp+10);
       const kb=120; p.vx -= ux*kb; p.vy -= uy*kb;
     }
   }
@@ -2860,6 +2974,8 @@ function worldCollapse(){
 }
 let powerReturnToMap = false;
 let powerBeforeMapChange = null;
+let ultReturnToMap = false;
+let ultBeforeMapChange = null;
 function buildPowerCards(){
   const wrap = $('#power-list'); wrap.innerHTML='';
   POWERS.forEach(P=>{
@@ -2925,9 +3041,11 @@ function hexA(hex,a){
 }
 function buildUltCards(){
   const wrap=$('#ult-list'); wrap.innerHTML='';
+  $('#btn-ult-next').disabled=true;
   ULTS.forEach(U=>{
     const el=document.createElement('div');
-    el.className='pcard'; el.style.setProperty('--pc',U.color); el.style.setProperty('--pc-soft',hexA(U.color,.25));
+    el.className='pcard'; el.dataset.ultId=U.id;
+    el.style.setProperty('--pc',U.color); el.style.setProperty('--pc-soft',hexA(U.color,.25));
     el.innerHTML = `<canvas class="glyph" width="48" height="48"></canvas>
       <div><h3>${U.name}</h3><div class="tag">${U.tag} · ${U.effect}</div><p>${U.desc.slice(0,42)}…</p></div>
       <div class="stat">ULT</div>`;
@@ -2940,6 +3058,10 @@ function buildUltCards(){
     });
     wrap.appendChild(el);
   });
+  if(G.ult){
+    const selected=wrap.querySelector(`[data-ult-id="${G.ult}"]`);
+    if(selected) selected.click();
+  }
 }
 function drawUltGlyph(cv,U){
   const g=cv.getContext('2d'); g.imageSmoothingEnabled=false;
@@ -3016,17 +3138,42 @@ function setupUI(){
     if(!G.power) return;
     Save.data.power=G.power; Save.save();
     if(powerReturnToMap){ powerReturnToMap=false; powerBeforeMapChange=null; syncAccent(); buildMap(); showScreen('map'); return; }
+    $('#ult-screen-step').textContent='2 / 2';
+    $('#btn-ult-back').textContent='返 回';
+    $('#btn-ult-next').textContent='进 入 世 界';
     buildUltCards(); showScreen('ult');
   });
-  $('#btn-ult-back').addEventListener('click', ()=>showScreen('power'));
+  $('#btn-ult-back').addEventListener('click', ()=>{
+    if(ultReturnToMap){
+      G.ult=ultBeforeMapChange;
+      ultReturnToMap=false; ultBeforeMapChange=null;
+      $('#ult-screen-step').textContent='2 / 2';
+      $('#btn-ult-back').textContent='返 回';
+      $('#btn-ult-next').textContent='进 入 世 界';
+      buildMap(); showScreen('map'); return;
+    }
+    showScreen('power');
+  });
   $('#btn-ult-next').addEventListener('click', ()=>{
     if(!G.ult) return;
-    Save.data.ult=G.ult; Save.data.collapse=G.collapse; Save.save();
+    Save.data.ult=G.ult;
+    if(ultReturnToMap){
+      ultReturnToMap=false; ultBeforeMapChange=null;
+      Save.save(); buildMap(); showScreen('map'); return;
+    }
+    Save.data.collapse=G.collapse; Save.save();
     buildMap(); showScreen('map');
   });
   $('#btn-change-power').addEventListener('click', ()=>{
     powerReturnToMap=true; powerBeforeMapChange=G.power;
     buildPowerCards(); showScreen('power');
+  });
+  $('#btn-change-ult').addEventListener('click', ()=>{
+    ultReturnToMap=true; ultBeforeMapChange=G.ult;
+    $('#ult-screen-step').textContent='更换大招';
+    $('#btn-ult-back').textContent='取 消 更 换';
+    $('#btn-ult-next').textContent='确 认 更 换';
+    buildUltCards(); showScreen('ult');
   });
   $('#btn-reset').addEventListener('click', ()=>{
     if(confirm('确定重置存档？所有已修复的故障点将重新出现。')){ Save.reset(); G.power=null; G.ult=null; G.collapse=20; showScreen('title'); }
