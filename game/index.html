@@ -773,6 +773,7 @@ const G = {
   ultFx:[],
   orderEclipseT:0, orderEclipseBurnT:0,
   orderJudgmentMissed:false,
+  orderAnnihilationSeen:false,
   ultReadyFx:0
 };
 Save.load();
@@ -1955,7 +1956,7 @@ function startLevel(id){
   $('#hud-power').style.color = POWER_MAP[G.power].color;
   $('#bossbar').classList.remove('on');
   $('#b-skill-n').textContent = POWER_MAP[G.power].skill.name;
-  $('#b-ult-n').textContent = ULT_MAP[G.ult].name;
+  $('#b-ult-n').textContent = G.ult==='u_order' && G.orderAnnihilationSeen ? '秩序焚灭' : ULT_MAP[G.ult].name;
   showScreen('battle');
   startPart(0);
   toast(G.replayCleared ? L.name + ' · 已修复关卡，崩解度保护已启用' : L.name + ' · ' + L.sub);
@@ -2121,8 +2122,11 @@ function castOrderJudgment(p){
   const guaranteedAnnihilation=!!G.orderJudgmentMissed;
   const annihilation=guaranteedAnnihilation || Math.random()<.5;
   G.orderJudgmentMissed=!annihilation;
-  // Reflect the actual Order Judgment result in the small label under the ultimate button.
-  $('#b-ult-n').textContent=annihilation?'秩序焚灭':'秩序审判';
+  // The random roll decides this cast's effect only; the label records whether Annihilation has ever occurred.
+  if(annihilation){
+    G.orderAnnihilationSeen=true;
+    $('#b-ult-n').textContent='秩序焚灭';
+  }
   G.bullets=G.bullets.filter(b=>b.owner!=='e');
   if(annihilation){
     G.orderEclipseT=30;
