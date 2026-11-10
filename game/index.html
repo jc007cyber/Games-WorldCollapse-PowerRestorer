@@ -2125,18 +2125,10 @@ function castOrderJudgment(p){
       G.slashes.push({x:e.x,y:e.y-8,a:0,arc:TAU,r:Math.max(28,e.r+16),t:0,dur:.62,color:'#ffe9a8'});
       damageEnemy(e,e.hp+1,{big:true,trueDmg:true});
     }
-    for(let i=0;i<6;i++){
-      const y=G.arena.h*(i+.5)/6;
-      G.slashes.push({x:G.player.x,y,a:0,arc:0,r:0,t:0,dur:.62,color:'#fff2c9',beam:true,w:G.arena.w});
-    }
     toast('秩序焚灭 · 全场肃清 · 后续30秒秩序封印');
     flash('#fff2c9',.8);
     G.shake=24;
   } else {
-    for(let i=0;i<5;i++){
-      const y=G.arena.h*(i+.5)/5;
-      G.slashes.push({x:G.player.x,y,a:0,arc:0,r:0,t:0,dur:.58,color:'#cfe4ff',beam:true,w:G.arena.w});
-    }
     for(const e of G.enemies){
       if(e.dead) continue;
       applyOrderFlame(e,flameDuration,false,burnDuration);
