@@ -2122,7 +2122,7 @@ function castOrderJudgment(p){
   const annihilation=guaranteedAnnihilation || Math.random()<.5;
   G.orderJudgmentMissed=!annihilation;
   // Reflect the actual Order Judgment result in the small label under the ultimate button.
-  $('#b-ult-n').textContent=annihilation?'秩序焚灭':'秩序审判';
+  if(annihilation) $('#b-ult-n').textContent='秩序焚灭';
   G.bullets=G.bullets.filter(b=>b.owner!=='e');
   if(annihilation){
     G.orderEclipseT=30;
