@@ -428,8 +428,8 @@ const ULTS = [
     desc:'掷出命运的天平：随机轰击全场 24 次裁决，每一次的结果都由骰子决定。',
     effect:'24 次随机天罚轰击' },
   { id:'u_order', name:'秩序审判', color:'#cfe4ff', tag:'扫荡',
-    desc:'宣告最终审判：50% 概率化为秩序焚灭。秩序审判对全场造成高额伤害、附加 7 秒秩序之炎与秩序燃烧，每个敌人有 75% 概率被直接斩杀；秩序焚灭直接清场，并使随后 30 秒刷新的敌人获得永久秩序之炎与 7 秒秩序燃烧。燃烧开始后再次施放秩序领域，每次使当前生效的秩序之炎与秩序燃烧各延长 15 秒。',
-    effect:'50% 秩序焚灭 · 75% 斩杀 · 全场秩序压制' },
+    desc:'大招按钮预先显示本次释放结果，释放时不再随机。首次为 50% 随机；若本次为秩序审判，则释放后预定下次必定秩序焚灭；若本次为秩序焚灭，则释放后立即为下次重新进行 50% 随机判定。秩序审判对全场造成高额伤害、附加 7 秒秩序之炎与秩序燃烧，每个敌人有 75% 概率被直接斩杀；秩序焚灭直接清场，并使随后 30 秒刷新的敌人获得永久秩序之炎与 7 秒秩序燃烧。燃烧开始后再次施放秩序领域，每次使当前生效的秩序之炎与秩序燃烧各延长 15 秒。',
+    effect:'预判下一次形态 · 普通审判后必定焚灭 · 焚灭后50%重掷' },
   { id:'u_space', name:'空间坍缩', color:'#35d6ff', tag:'聚怪',
     desc:'在战场中心撕裂巨隙：吸附全场敌人，随后坍缩成一点引爆。',
     effect:'吸附聚怪 + 中心大爆' },
@@ -772,8 +772,8 @@ const G = {
   stopDur:0, stopIntro:0,
   ultFx:[],
   orderEclipseT:0, orderEclipseBurnT:0,
-  orderJudgmentMissed:false,
-  orderAnnihilationSeen:false,
+  orderNextAnnihilation:null,
+  orderNextGuaranteed:false,
   ultReadyFx:0
 };
 Save.load();
@@ -1946,6 +1946,10 @@ function startLevel(id){
   G.player = makePlayer(G.power);
   G.kills=0; G.elapsed=0;
   G.orderEclipseT=0; G.orderEclipseBurnT=0;
+  if(G.ult==='u_order' && G.orderNextAnnihilation===null){
+    G.orderNextAnnihilation=Math.random()<.5;
+    G.orderNextGuaranteed=false;
+  }
   G.freeze=0; G.shake=0; G.flash=0;
   G.running = true; G.paused = false;
   $('#hud-lv').textContent = `${L.chapter} ${L.chIdx} · ${L.name}`;
@@ -1956,7 +1960,9 @@ function startLevel(id){
   $('#hud-power').style.color = POWER_MAP[G.power].color;
   $('#bossbar').classList.remove('on');
   $('#b-skill-n').textContent = POWER_MAP[G.power].skill.name;
-  $('#b-ult-n').textContent = G.ult==='u_order' && G.orderAnnihilationSeen ? '秩序焚灭' : ULT_MAP[G.ult].name;
+  $('#b-ult-n').textContent = G.ult==='u_order'
+    ? (G.orderNextAnnihilation ? '秩序焚灭' : '秩序审判')
+    : ULT_MAP[G.ult].name;
   showScreen('battle');
   startPart(0);
   toast(G.replayCleared ? L.name + ' · 已修复关卡，崩解度保护已启用' : L.name + ' · ' + L.sub);
@@ -2119,14 +2125,9 @@ function applyOrderFlame(e,duration,permanent,burnDuration){
 function castOrderJudgment(p){
   const flameDuration=7;
   const burnDuration=7;
-  const guaranteedAnnihilation=!!G.orderJudgmentMissed;
-  const annihilation=guaranteedAnnihilation || Math.random()<.5;
-  G.orderJudgmentMissed=!annihilation;
-  // The random roll decides this cast's effect only; the label records whether Annihilation has ever occurred.
-  if(annihilation){
-    G.orderAnnihilationSeen=true;
-    $('#b-ult-n').textContent='秩序焚灭';
-  }
+  // This cast consumes the result prepared after the previous use (or at level start).
+  const annihilation=!!G.orderNextAnnihilation;
+  const guaranteedAnnihilation=!!G.orderNextGuaranteed;
   G.bullets=G.bullets.filter(b=>b.owner!=='e');
   if(annihilation){
     G.orderEclipseT=30;
@@ -2162,6 +2163,15 @@ function castOrderJudgment(p){
     flash('#cfe4ff',.62);
     G.shake=18;
   }
+  // After this cast resolves, decide and display the next cast's pre-rolled result.
+  if(annihilation){
+    G.orderNextAnnihilation=Math.random()<.5;
+    G.orderNextGuaranteed=false;
+  } else {
+    G.orderNextAnnihilation=true;
+    G.orderNextGuaranteed=true;
+  }
+  $('#b-ult-n').textContent=G.orderNextAnnihilation?'秩序焚灭':'秩序审判';
 }
 
 function hurtPlayer(dmg){
