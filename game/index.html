@@ -772,7 +772,7 @@ const G = {
   stopDur:0, stopIntro:0,
   ultFx:[],
   orderEclipseT:0, orderEclipseBurnT:0,
-  orderNextAnnihilation:false,
+  orderNextAnnihilation:null,
   orderNextGuaranteed:false,
   ultReadyFx:0
 };
@@ -1946,8 +1946,10 @@ function startLevel(id){
   G.player = makePlayer(G.power);
   G.kills=0; G.elapsed=0;
   G.orderEclipseT=0; G.orderEclipseBurnT=0;
-  G.orderNextAnnihilation=G.ult==='u_order' ? Math.random()<.5 : false;
-  G.orderNextGuaranteed=false;
+  if(G.ult==='u_order' && G.orderNextAnnihilation===null){
+    G.orderNextAnnihilation=Math.random()<.5;
+    G.orderNextGuaranteed=false;
+  }
   G.freeze=0; G.shake=0; G.flash=0;
   G.running = true; G.paused = false;
   $('#hud-lv').textContent = `${L.chapter} ${L.chIdx} · ${L.name}`;
