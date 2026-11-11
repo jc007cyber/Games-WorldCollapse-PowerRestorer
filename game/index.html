@@ -353,14 +353,16 @@ function angApproach(cur, want, dt, boost){
   spd = Math.max(spd, TURN.min);
   return cur + Math.sign(d) * Math.min(ad, spd*dt);
 }
+const KARMA_MAX_STACKS = 175;
+const KARMA_SKILL_BONUS_STACKS = 100;
 const POWERS = [
   { id:'karma', name:'业报之权', color:'#a86bff', color2:'#5b2bbf', metal:'#d9c7ff',
     weapon:'业报之镰', tagline:'以因果之镰，收割罪业',
     atk:{mode:'melee', dmg:26, cd:.40, range:46, arc:1.5, kb:130,
          blade:{mul:.55, speed:330, life:1.1, r:4}},
-    passive:'每次命中累积 1 层「业」，每层提升 2% 镰刀伤害（上限 50 层）',
+    passive:'每次命中累积 1 层「业」，每层提升 2% 镰刀伤害（上限 175 层）；达到 100 层后，业力凝冥持续期间额外造成 100% 伤害',
     skill:{ name:'业力凝冥', duration:60, cooldown:90,
-      desc:'镰刀伤害 +60% 并附加灼烧；背后凝结死神虚影，使目标虚弱、移动迟缓；画面浮现暗角与紫色滤镜。' },
+      desc:'镰刀伤害 +60% 并附加灼烧；业层达到 100 层后，本技能持续期间所有自身伤害额外 +100%；背后凝结死神虚影，使目标虚弱、移动迟缓；画面浮现暗角与紫色滤镜。' },
     brief:'近战 · 高爆发 · 持续灼烧' },
   { id:'time', name:'时间之权', color:'#ffcc44', color2:'#a06a10', metal:'#fff0b8',
     weapon:'金辉怀表', tagline:'时间，是可以被拨动的齿轮',
@@ -2150,16 +2152,22 @@ function burst(x,y,n,color,sp){ for(let i=0;i<n;i++) G.parts.push(mkPart(x,y,col
 function spaceTimeDamageBonusActive(){
   return G.player?.pw?.id==='space' && G.ult==='u_time';
 }
+function karmaSkillDamageBonusActive(){
+  const p=G.player;
+  return !!(p && p.pw.id==='karma' && p.skillT>0 &&
+    (p.karma||0)>=KARMA_SKILL_BONUS_STACKS);
+}
 function damageEnemy(e, dmg, opt){
   if(!e || e.dead) return;
   opt = opt||{};
   if(G.player && G.player.pw.id==='karma' && !opt.silent){
-    G.player.karma=Math.min(50,(G.player.karma||0)+1);
+    G.player.karma=Math.min(KARMA_MAX_STACKS,(G.player.karma||0)+1);
   }
   const T = ETYPES[e.type];
   // Space Power + Time's End: double damage from all player-owned hits.
   // Apply once at the central damage entry point, after existing attack bonuses.
-  let d = dmg * (spaceTimeDamageBonusActive() ? 2 : 1);
+  let d = dmg * (spaceTimeDamageBonusActive() ? 2 : 1) *
+    (karmaSkillDamageBonusActive() ? 2 : 1);
   if(e.weak>0) d *= 1.2;
   for(const z of G.zones) if(z.kind==='order' && dist2(e.x,e.y,z.x,z.y) < z.r*z.r) d *= 1.3;
   if(T.armor && !opt.trueDmg) d *= (1 - T.armor);
@@ -2479,7 +2487,10 @@ function tryUlt(p){
   const id = U.id;
   if(id==='u_karma'){
     for(const e of G.enemies){ damageEnemy(e, 190, {big:true}); e.burn = Math.max(e.burn, 8); }
-    G.ultFx.push({t:0, dur:8, tick:0, fn:(dt)=>{ for(const e of G.enemies) if(!e.dead && e.burn>0) e.hp -= 14*dt; }});
+    G.ultFx.push({t:0, dur:8, tick:0, fn:(dt)=>{ for(const e of G.enemies) if(!e.dead && e.burn>0){
+      // Preserve raw damage-over-time mechanics while applying the active karma bonus.
+      e.hp -= 14*dt*(karmaSkillDamageBonusActive() ? 2 : 1);
+    } }});
     for(let i=0;i<30;i++) G.parts.push(mkPart(rand(0,G.arena.w), rand(0,G.arena.h), '#a86bff', {sp:40, life:.8, size:2}));
   } else if(id==='u_time'){
     G.freeze = Math.max(G.freeze, 5);
@@ -2724,7 +2735,7 @@ function updateEnemies(dt){
     if(e.burn>0){
       // Burn damage also follows the Time's End + Space Power damage bonus.
       if(spaceTimeDamageBonusActive()) damageEnemy(e,9*dt,{silent:true});
-      else e.hp -= 9*dt;
+      else e.hp -= 9*dt*(karmaSkillDamageBonusActive() ? 2 : 1);
     }
     if(e.dead) continue;
     if(e.pull>0){
@@ -3032,7 +3043,8 @@ function updateHud(){
     passive.style.color=p.warReady?'#ffe0b0':p.pw.color;
   } else if(p.pw.id==='karma'){
     passive.classList.remove('hidden');
-    passive.textContent=`业层 ${p.karma||0}/50 · 伤害 +${((p.karma||0)*2).toFixed(0)}%`;
+    const bonus=karmaSkillDamageBonusActive() ? ' · 凝冥额外伤害 +100%' : '';
+    passive.textContent=`业层 ${p.karma||0}/${KARMA_MAX_STACKS} · 伤害 +${((p.karma||0)*2).toFixed(0)}%${bonus}`;
     passive.style.color=p.pw.color;
   } else passive.classList.add('hidden');
   $('#hud-collapse').style.width = G.collapse+'%';
