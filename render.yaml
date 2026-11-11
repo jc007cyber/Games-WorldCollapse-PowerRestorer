@@ -1,0 +1,11 @@
+# One-click Render Static Site deployment for the single-file browser game.
+# No runtime server, database, or paid compute instance is required.
+services:
+  - type: web
+    name: worldcollapse-powerrestorer-demo
+    runtime: static
+    repo: https://github.com/jc007cyber/Games-WorldCollapse-PowerRestorer
+    branch: main
+    buildCommand: mkdir -p site && cp game/index.html site/index.html
+    staticPublishPath: ./site
+    autoDeployTrigger: commit
