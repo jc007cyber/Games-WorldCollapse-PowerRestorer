@@ -394,7 +394,7 @@ const POWERS = [
   { id:'space', name:'空间之权', color:'#35d6ff', color2:'#0b6f96', metal:'#c8f6ff',
     weapon:'裂隙指环', tagline:'两点之间，不必路过中间',
     atk:{mode:'ranged', dmg:14, cd:.26, speed:420, r:3, life:.9, pierce:1},
-    passive:'空间弹体穿墙贯穿敌人、伤害 +50%；冲刺变为瞬移；空间闪避：基础 75%，每只存活普通怪 +1.5%，有存活 Boss +15%，携带空间坍缩大招再 +15%，最高 100%，成功时免疫本次伤害和僵直',
+    passive:'空间弹体穿墙贯穿敌人、伤害 +50%；冲刺瞬移；空间闪避基础 75%，每只存活普通怪 +1.5%，有存活 Boss +15%；携带空间坍缩再 +15% 闪避（最高 100%）；携带时之终焉时自身造成的伤害额外 +100%；闪避免疫本次伤害与僵直',
     skill:{ name:'空间折叠', duration:8, cooldown:25,
       desc:'瞬移距离翻倍，残影在原地爆裂造成范围伤害；期间移动速度提升。' },
     brief:'远程 · 位移 · 机动' },
@@ -2119,6 +2119,9 @@ function mkPart(x,y,color,o){
     life:o.life||rand(.25,.6), t:0, color, size:o.size||randi(1,2), g:o.g||0 };
 }
 function burst(x,y,n,color,sp){ for(let i=0;i<n;i++) G.parts.push(mkPart(x,y,color,{sp:sp||rand(40,140), life:rand(.25,.7)})); }
+function spaceTimeDamageBonusActive(){
+  return G.player?.pw?.id==='space' && G.ult==='u_time';
+}
 function damageEnemy(e, dmg, opt){
   if(!e || e.dead) return;
   opt = opt||{};
@@ -2126,7 +2129,9 @@ function damageEnemy(e, dmg, opt){
     G.player.karma=Math.min(50,(G.player.karma||0)+1);
   }
   const T = ETYPES[e.type];
-  let d = dmg;
+  // Space Power + Time's End: double damage from all player-owned hits.
+  // Apply once at the central damage entry point, after existing attack bonuses.
+  let d = dmg * (spaceTimeDamageBonusActive() ? 2 : 1);
   if(e.weak>0) d *= 1.2;
   for(const z of G.zones) if(z.kind==='order' && dist2(e.x,e.y,z.x,z.y) < z.r*z.r) d *= 1.3;
   if(T.armor && !opt.trueDmg) d *= (1 - T.armor);
@@ -2452,7 +2457,11 @@ function tryUlt(p){
     G.freeze = Math.max(G.freeze, 5);
     if(G.stopDur<=0){ G.stopDur = 5; G.stopIntro = 0.7; }
     for(const e of G.enemies){ damageEnemy(e, 120, {}); e.burn = Math.max(e.burn, 5); }
-    G.ultFx.push({t:0, dur:5, tick:0, fn:(dt)=>{ for(const e of G.enemies) if(!e.dead) e.hp -= 22*dt; }});
+    G.ultFx.push({t:0, dur:5, tick:0, fn:(dt)=>{ for(const e of G.enemies) if(!e.dead){
+      // The existing raw HP drain bypasses damageEnemy: double this too for Space Power.
+      if(spaceTimeDamageBonusActive()) damageEnemy(e,22*dt,{silent:true});
+      else e.hp -= 22*dt;
+    } }});
   } else if(id==='u_life'){
     p.hp = Math.min(p.hpMax, p.hp + 45);
     for(const e of G.enemies){ e.slow = Math.max(e.slow, 6); damageEnemy(e, 60, {}); }
@@ -2684,7 +2693,11 @@ function updateEnemies(dt){
     e.hurt = Math.max(0, e.hurt-dt); e.burn = Math.max(0,e.burn-dt);
     e.slow = Math.max(0,e.slow-dt); e.weak = Math.max(0,e.weak-dt);
     e.touchCd -= dt*(orderFlameActive && !rangedEnemy ? .25 : 1);
-    if(e.burn>0) e.hp -= 9*dt;
+    if(e.burn>0){
+      // Burn damage also follows the Time's End + Space Power damage bonus.
+      if(spaceTimeDamageBonusActive()) damageEnemy(e,9*dt,{silent:true});
+      else e.hp -= 9*dt;
+    }
     if(e.dead) continue;
     if(e.pull>0){
       e.pull -= dt;
