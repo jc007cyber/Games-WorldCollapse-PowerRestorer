@@ -831,43 +831,72 @@ const Input = {
   atk:false, dashReq:false, skillReq:false, ultReq:false,
   move:{x:0, y:0}, aim:{x:1, y:0}
 };
+const MOVE_KEY_CODES = {
+  KeyA:'a', KeyD:'d', KeyW:'w', KeyS:'s',
+  ArrowLeft:'arrowleft', ArrowRight:'arrowright',
+  ArrowUp:'arrowup', ArrowDown:'arrowdown'
+};
+function movementKey(e){
+  // Prefer physical key positions, with a fallback for browsers omitting event.code.
+  const physical=MOVE_KEY_CODES[e.code];
+  if(physical) return physical;
+  const logical=(e.key||'').toLowerCase();
+  return ['a','d','w','s','arrowleft','arrowright','arrowup','arrowdown'].includes(logical) ? logical : null;
+}
 function setupInput(){
   addEventListener('keydown', e=>{
-    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
-    Input.keys[e.key.toLowerCase()] = true;
+    const key=movementKey(e);
+    if(key){
+      Input.keys[key]=true;
+      if(key.startsWith('arrow')) e.preventDefault();
+    }
+    if(e.key===' ') e.preventDefault();
     if(e.key==='j'||e.key==='J') Input.atk = true;
     if(e.key==='q'||e.key==='Q') Input.skillReq = true;
     if(e.key==='e'||e.key==='E') Input.ultReq = true;
     if(e.key==='Escape') togglePause();
   });
+  // Capture keyup before UI controls can consume the event.
   addEventListener('keyup', e=>{
-    Input.keys[e.key.toLowerCase()] = false;
+    const key=movementKey(e);
+    if(key) Input.keys[key]=false;
     if(e.key==='j'||e.key==='J') Input.atk = false;
-  });
+  }, true);
   const cv = $('#cv');
   addEventListener('mousemove', e=>{ Input.mx=e.clientX; Input.my=e.clientY; Input.hasMouse=true; });
   addEventListener('mousedown', e=>{ if(e.target===cv||e.target.id==='hud'||$('#hud').contains(e.target)){ if(e.button===0) Input.atk=true; } });
   addEventListener('mouseup',  e=>{ if(e.button===0) Input.atk=false; });
-  addEventListener('touchstart', onTouch, {passive:false});
-  addEventListener('touchmove',  onTouch, {passive:false});
-  addEventListener('touchend',   onTouch, {passive:false});
-  addEventListener('touchcancel',onTouch, {passive:false});
+  // Canvas pointer capture retains joystick release events even if a finger leaves the canvas.
+  cv.addEventListener('pointerdown', onJoystickPointerDown);
+  addEventListener('pointermove', onJoystickPointerMove);
+  addEventListener('pointerup', onJoystickPointerEnd, true);
+  addEventListener('pointercancel', onJoystickPointerEnd, true);
+  cv.addEventListener('lostpointercapture', onJoystickPointerEnd);
   bindHold('#b-atk',  v=>Input.atk=v);
   bindTap('#b-dash',  ()=>Input.dashReq=true);
   bindTap('#b-skill', ()=>Input.skillReq=true);
   bindTap('#b-ult',   ()=>Input.ultReq=true);
   bindTap('#btn-pause',()=>togglePause());
   addEventListener('blur', clearInput);
+  addEventListener('focus', clearInput);
   addEventListener('pagehide', clearInput);
   document.addEventListener('visibilitychange', ()=>{ if(document.hidden) clearInput(); });
+}
+function resetStick(){
+  const pointerId=Input.stick.id;
+  Input.stick = {on:false,id:null,ox:0,oy:0,x:0,y:0,dx:0,dy:0};
+  hideStick();
+  const cv=$('#cv');
+  if(pointerId!==null && cv && cv.hasPointerCapture?.(pointerId)){
+    try{ cv.releasePointerCapture(pointerId); }catch(e){}
+  }
 }
 function clearInput(){
   Input.keys = {};
   Input.atk = false;
   Input.dashReq = Input.skillReq = Input.ultReq = false;
-  Input.stick = {on:false,id:null,ox:0,oy:0,x:0,y:0,dx:0,dy:0};
+  resetStick();
   Input.move.x = Input.move.y = 0;
-  hideStick();
 }
 function bindHold(sel, fn){
   const el = $(sel); if(!el) return;
@@ -885,32 +914,31 @@ function bindTap(sel, fn){
   el.addEventListener('touchstart', go, {passive:false});
   el.addEventListener('mousedown', e=>{ e.preventDefault(); fn(); });
 }
-function onTouch(e){
-  if(G.screen!=='battle' && e.type!=='touchend' && e.type!=='touchcancel') return;
-  const cv = $('#cv');
-  for(const t of e.changedTouches){
-    if(e.type==='touchstart'){
-      const tgt = e.target;
-      const onBtn = tgt && tgt.closest && tgt.closest('.pbtn');
-      if(t.clientX < innerWidth*0.5 && !Input.stick.on && !onBtn){
-        Input.stick = {on:true, id:t.identifier, ox:t.clientX, oy:t.clientY, x:t.clientX, y:t.clientY, dx:0, dy:0};
-        showStick(t.clientX, t.clientY, 0, 0);
-      }
-    } else if(e.type==='touchmove'){
-      if(Input.stick.on && t.identifier===Input.stick.id){
-        let dx = t.clientX-Input.stick.ox, dy = t.clientY-Input.stick.oy;
-        const max = 46*Math.max(1,G.scale/3);
-        const d = Math.hypot(dx,dy); if(d>max){ dx=dx/d*max; dy=dy/d*max; }
-        Input.stick.dx = dx/max; Input.stick.dy = dy/max;
-        showStick(Input.stick.ox, Input.stick.oy, dx, dy);
-        e.preventDefault();
-      }
-    } else {
-      if(Input.stick.on && t.identifier===Input.stick.id){
-        Input.stick.on=false; Input.stick.dx=Input.stick.dy=0; hideStick();
-      }
-    }
-  }
+function onJoystickPointerDown(e){
+  if(e.pointerType!=='touch' && e.pointerType!=='pen') return;
+  if(G.screen!=='battle' || !G.running || G.paused) return;
+  if(Input.stick.on || e.clientX>=innerWidth*0.5) return;
+  Input.stick = {on:true,id:e.pointerId,ox:e.clientX,oy:e.clientY,
+    x:e.clientX,y:e.clientY,dx:0,dy:0};
+  showStick(e.clientX,e.clientY,0,0);
+  try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(err){}
+  e.preventDefault();
+}
+function onJoystickPointerMove(e){
+  const s=Input.stick;
+  if(!s.on || e.pointerId!==s.id) return;
+  if(G.screen!=='battle' || !G.running || G.paused){ resetStick(); return; }
+  let dx=e.clientX-s.ox, dy=e.clientY-s.oy;
+  const max=46*Math.max(1,G.scale/3);
+  const d=Math.hypot(dx,dy);
+  if(d>max){ dx=dx/d*max; dy=dy/d*max; }
+  s.x=e.clientX; s.y=e.clientY;
+  s.dx=dx/max; s.dy=dy/max;
+  showStick(s.ox,s.oy,dx,dy);
+  e.preventDefault();
+}
+function onJoystickPointerEnd(e){
+  if(Input.stick.on && e.pointerId===Input.stick.id) resetStick();
 }
 function showStick(x,y,dx,dy){
   const s=$('#stick'); s.classList.add('on');
@@ -2996,6 +3024,8 @@ function toast(msg){
   const el=$('#toast'); el.textContent=msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
 }
 function showScreen(name){
+  // A hidden joystick is not a released joystick: reset the actual input state.
+  if(G.screen!==name || name==='battle') clearInput();
   G.screen = name;
   for(const s of $$('.screen')) s.classList.add('hidden');
   $('#scr-result').classList.add('hidden');
@@ -3003,11 +3033,11 @@ function showScreen(name){
   $('#hud').classList.toggle('hidden', name!=='battle');
   const map = {title:'#scr-title', power:'#scr-power', ult:'#scr-ult', map:'#scr-map'};
   if(map[name]) $(map[name]).classList.remove('hidden');
-  if(name==='battle'){ hideStick(); }
 }
 function togglePause(){
   if(G.screen!=='battle' || !G.running) return;
   G.paused = !G.paused;
+  clearInput();
   $('#scr-pause').classList.toggle('hidden', !G.paused);
 }
 function endLevel(win){
