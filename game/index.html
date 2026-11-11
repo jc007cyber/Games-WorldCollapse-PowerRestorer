@@ -777,6 +777,28 @@ const G = {
   ultReadyFx:0
 };
 Save.load();
+const SAVE_MAX_KEY = 'collapse_world_max_level_v1';
+function maxLevel(){
+  try{ return Math.max(0, Math.min(LEVELS.length, parseInt(localStorage.getItem(SAVE_MAX_KEY)||'0',10)||0)); }
+  catch(e){ return 0; }
+}
+function syncProgress(){
+  const d = Save.data;
+  if(!Array.isArray(d.done)) d.done = [];
+  let mx = maxLevel();
+  if(d.done.length > mx) mx = d.done.length;
+  mx = Math.min(mx, LEVELS.length);
+  if(mx > 0){
+    if(d.done.length < mx) d.done = LEVELS.slice(0,mx).map(L=>L.id);
+    try{ localStorage.setItem(SAVE_MAX_KEY, String(mx)); }catch(e){}
+  }
+  return mx;
+}
+const _saveRaw = Save.save.bind(Save);
+Save.save = function(){ syncProgress(); _saveRaw(); };
+const _resetRaw = Save.reset.bind(Save);
+Save.reset = function(){ try{ localStorage.removeItem(SAVE_MAX_KEY); }catch(e){} _resetRaw(); };
+syncProgress();
 function setupCanvas(){
   G.cv = $('#cv'); G.ctx = G.cv.getContext('2d', {alpha:false});
   resize(); addEventListener('resize', resize); addEventListener('orientationchange', ()=>setTimeout(resize,120));
@@ -3152,9 +3174,10 @@ function buildMap(){
     svg.appendChild(ln);
   }
   let unlocked = 0;
+  const maxDone = d.done.reduce((m,id)=>Math.max(m, LEVELS.findIndex(L=>L.id===id)), -1);
   LEVELS.forEach((L,i)=>{
     const isDone = d.done.includes(L.id);
-    const isOpen = i===0 || d.done.includes(LEVELS[i-1].id) || isDone;
+    const isOpen = i===0 || i <= maxDone+1 || isDone;
     if(isOpen) unlocked = i+1;
     const n=document.createElement('div');
     n.className='node'+(L.tier==='origin'?' origin':'')+(L.tier==='deep'?' deep':'')+(L.tier==='post'?' post':'')+(isDone?' done':'')+(isOpen?'':' locked')+(isOpen&&!isDone?' cur':'');
@@ -3186,7 +3209,14 @@ function syncAccent(){
   }
 }
 function setupUI(){
-  $('#btn-start').addEventListener('click', ()=>{ showScreen('power'); buildPowerCards(); });
+  $('#btn-start').addEventListener('click', ()=>{
+    const d=Save.data;
+    if(d.done && d.done.length){
+      G.collapse = d.collapse==null ? 20 : d.collapse;
+      G.power = G.power || d.power; G.ult = G.ult || d.ult;
+    }
+    showScreen('power'); buildPowerCards();
+  });
   $('#btn-continue').addEventListener('click', ()=>{
     const d=Save.data;
     if(!d.power){
@@ -3231,7 +3261,8 @@ function setupUI(){
       ultReturnToMap=false; ultBeforeMapChange=null;
       Save.save(); buildMap(); showScreen('map'); return;
     }
-    Save.data.collapse=G.collapse; Save.save();
+    if(!Save.data.done || !Save.data.done.length) Save.data.collapse=G.collapse;
+    Save.save();
     buildMap(); showScreen('map');
   });
   $('#btn-change-power').addEventListener('click', ()=>{
