@@ -394,7 +394,7 @@ const POWERS = [
   { id:'space', name:'空间之权', color:'#35d6ff', color2:'#0b6f96', metal:'#c8f6ff',
     weapon:'裂隙指环', tagline:'两点之间，不必路过中间',
     atk:{mode:'ranged', dmg:14, cd:.26, speed:420, r:3, life:.9, pierce:1},
-    passive:'空间弹体穿墙并贯穿多个敌人，攻击伤害提升 50%；冲刺变为瞬移，落点留下裂隙残影',
+    passive:'空间弹体穿墙贯穿敌人、伤害 +50%；冲刺瞬移；空间闪避基础 75%，每只存活普通怪 +1.5%，有存活 Boss +15%；携带空间坍缩再 +15% 闪避（最高 100%）；携带时之终焉时自身造成的伤害额外 +100%；闪避免疫本次伤害与僵直',
     skill:{ name:'空间折叠', duration:8, cooldown:25,
       desc:'瞬移距离翻倍，残影在原地爆裂造成范围伤害；期间移动速度提升。' },
     brief:'远程 · 位移 · 机动' },
@@ -2147,6 +2147,9 @@ function mkPart(x,y,color,o){
     life:o.life||rand(.25,.6), t:0, color, size:o.size||randi(1,2), g:o.g||0 };
 }
 function burst(x,y,n,color,sp){ for(let i=0;i<n;i++) G.parts.push(mkPart(x,y,color,{sp:sp||rand(40,140), life:rand(.25,.7)})); }
+function spaceTimeDamageBonusActive(){
+  return G.player?.pw?.id==='space' && G.ult==='u_time';
+}
 function damageEnemy(e, dmg, opt){
   if(!e || e.dead) return;
   opt = opt||{};
@@ -2154,7 +2157,9 @@ function damageEnemy(e, dmg, opt){
     G.player.karma=Math.min(50,(G.player.karma||0)+1);
   }
   const T = ETYPES[e.type];
-  let d = dmg;
+  // Space Power + Time's End: double damage from all player-owned hits.
+  // Apply once at the central damage entry point, after existing attack bonuses.
+  let d = dmg * (spaceTimeDamageBonusActive() ? 2 : 1);
   if(e.weak>0) d *= 1.2;
   for(const z of G.zones) if(z.kind==='order' && dist2(e.x,e.y,z.x,z.y) < z.r*z.r) d *= 1.3;
   if(T.armor && !opt.trueDmg) d *= (1 - T.armor);
@@ -2235,13 +2240,32 @@ function castOrderJudgment(p){
   $('#b-ult-n').textContent=G.orderNextAnnihilation?'秩序焚灭':'秩序审判';
 }
 
+function spaceDodgeChance(){
+  // Only living non-boss enemies contribute 1.5% each.
+  // Having at least one living boss contributes a flat 15% (not per boss).
+  let livingMobs=0, bossAlive=false;
+  for(const e of G.enemies){
+    if(e.dead || e.hp<=0) continue;
+    if(ETYPES[e.type]?.boss) bossAlive=true;
+    else livingMobs++;
+  }
+  const spaceCollapseBonus = G.ult==='u_space' ? .15 : 0;
+  return Math.min(1, .75 + livingMobs*.015 + (bossAlive ? .15 : 0) + spaceCollapseBonus);
+}
 function hurtPlayer(dmg){
   const p=G.player;
   if(p.inv>0 || p.dashT>0) return;
+  if(p.pw.id==='space' && Math.random()<spaceDodgeChance()){
+    // Return false specifically for space evasion, so contact knockback
+    // and siphon life-steal are also suppressed for this avoided hit.
+    burst(p.x,p.y-8,8,p.pw.color,80);
+    return false;
+  }
   p.hp -= dmg; p.inv = .7; p.hurtFlash = .16; p.hitShake = 7;
   p.ult = clamp(p.ult + 4, 0, 100);
   G.shake = 10; flash('#ff2d55', .28);
   if(p.hp<=0){ p.hp=0; endLevel(false); }
+  return true;
 }
 function healPlayer(amount){
   const p=G.player;
@@ -2461,7 +2485,11 @@ function tryUlt(p){
     G.freeze = Math.max(G.freeze, 5);
     if(G.stopDur<=0){ G.stopDur = 5; G.stopIntro = 0.7; }
     for(const e of G.enemies){ damageEnemy(e, 120, {}); e.burn = Math.max(e.burn, 5); }
-    G.ultFx.push({t:0, dur:5, tick:0, fn:(dt)=>{ for(const e of G.enemies) if(!e.dead) e.hp -= 22*dt; }});
+    G.ultFx.push({t:0, dur:5, tick:0, fn:(dt)=>{ for(const e of G.enemies) if(!e.dead){
+      // The existing raw HP drain bypasses damageEnemy: double this too for Space Power.
+      if(spaceTimeDamageBonusActive()) damageEnemy(e,22*dt,{silent:true});
+      else e.hp -= 22*dt;
+    } }});
   } else if(id==='u_life'){
     p.hp = Math.min(p.hpMax, p.hp + 45);
     for(const e of G.enemies){ e.slow = Math.max(e.slow, 6); damageEnemy(e, 60, {}); }
@@ -2693,7 +2721,11 @@ function updateEnemies(dt){
     e.hurt = Math.max(0, e.hurt-dt); e.burn = Math.max(0,e.burn-dt);
     e.slow = Math.max(0,e.slow-dt); e.weak = Math.max(0,e.weak-dt);
     e.touchCd -= dt*(orderFlameActive && !rangedEnemy ? .25 : 1);
-    if(e.burn>0) e.hp -= 9*dt;
+    if(e.burn>0){
+      // Burn damage also follows the Time's End + Space Power damage bonus.
+      if(spaceTimeDamageBonusActive()) damageEnemy(e,9*dt,{silent:true});
+      else e.hp -= 9*dt;
+    }
     if(e.dead) continue;
     if(e.pull>0){
       e.pull -= dt;
@@ -2809,9 +2841,11 @@ function updateEnemies(dt){
     if(d < e.r + p.r + 4 && e.touchCd<=0 && !(orderFlameActive && rangedEnemy) &&
        !blockLine(e.x, e.y-8, p.x, p.y-8)){
       e.touchCd = .6;
-      hurtPlayer(T.dmg * (e.type==='brute'&&e.charging>0 ? 1.4 : 1));
-      if(e.type==='siphon' && !orderFlameActive) e.hp=Math.min(e.hpMax,e.hp+10);
-      const kb=120; p.vx -= ux*kb; p.vy -= uy*kb;
+      const evaded = hurtPlayer(T.dmg * (e.type==='brute'&&e.charging>0 ? 1.4 : 1)) === false;
+      if(!evaded){
+        if(e.type==='siphon' && !orderFlameActive) e.hp=Math.min(e.hpMax,e.hp+10);
+        const kb=120; p.vx -= ux*kb; p.vy -= uy*kb;
+      }
     }
   }
   for(let i=G.enemies.length-1;i>=0;i--){
