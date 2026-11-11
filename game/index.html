@@ -394,7 +394,7 @@ const POWERS = [
   { id:'space', name:'空间之权', color:'#35d6ff', color2:'#0b6f96', metal:'#c8f6ff',
     weapon:'裂隙指环', tagline:'两点之间，不必路过中间',
     atk:{mode:'ranged', dmg:14, cd:.26, speed:420, r:3, life:.9, pierce:1},
-    passive:'空间弹体穿墙并贯穿多个敌人，攻击伤害提升 50%；冲刺变为瞬移，落点留下裂隙残影',
+    passive:'空间弹体穿墙贯穿敌人、伤害 +50%；冲刺变为瞬移；空间闪避：受击基础 75%，每只存活普通怪 +1.5%，有存活 Boss +15%（Boss 不计普通怪），最高 100%，成功时免疫本次伤害和僵直',
     skill:{ name:'空间折叠', duration:8, cooldown:25,
       desc:'瞬移距离翻倍，残影在原地爆裂造成范围伤害；期间移动速度提升。' },
     brief:'远程 · 位移 · 机动' },
@@ -2207,13 +2207,31 @@ function castOrderJudgment(p){
   $('#b-ult-n').textContent=G.orderNextAnnihilation?'秩序焚灭':'秩序审判';
 }
 
+function spaceDodgeChance(){
+  // Only living non-boss enemies contribute 1.5% each.
+  // Having at least one living boss contributes a flat 15% (not per boss).
+  let livingMobs=0, bossAlive=false;
+  for(const e of G.enemies){
+    if(e.dead || e.hp<=0) continue;
+    if(ETYPES[e.type]?.boss) bossAlive=true;
+    else livingMobs++;
+  }
+  return Math.min(1, .75 + livingMobs*.015 + (bossAlive ? .15 : 0));
+}
 function hurtPlayer(dmg){
   const p=G.player;
   if(p.inv>0 || p.dashT>0) return;
+  if(p.pw.id==='space' && Math.random()<spaceDodgeChance()){
+    // Return false specifically for space evasion, so contact knockback
+    // and siphon life-steal are also suppressed for this avoided hit.
+    burst(p.x,p.y-8,8,p.pw.color,80);
+    return false;
+  }
   p.hp -= dmg; p.inv = .7; p.hurtFlash = .16; p.hitShake = 7;
   p.ult = clamp(p.ult + 4, 0, 100);
   G.shake = 10; flash('#ff2d55', .28);
   if(p.hp<=0){ p.hp=0; endLevel(false); }
+  return true;
 }
 function healPlayer(amount){
   const p=G.player;
@@ -2781,9 +2799,11 @@ function updateEnemies(dt){
     if(d < e.r + p.r + 4 && e.touchCd<=0 && !(orderFlameActive && rangedEnemy) &&
        !blockLine(e.x, e.y-8, p.x, p.y-8)){
       e.touchCd = .6;
-      hurtPlayer(T.dmg * (e.type==='brute'&&e.charging>0 ? 1.4 : 1));
-      if(e.type==='siphon' && !orderFlameActive) e.hp=Math.min(e.hpMax,e.hp+10);
-      const kb=120; p.vx -= ux*kb; p.vy -= uy*kb;
+      const evaded = hurtPlayer(T.dmg * (e.type==='brute'&&e.charging>0 ? 1.4 : 1)) === false;
+      if(!evaded){
+        if(e.type==='siphon' && !orderFlameActive) e.hp=Math.min(e.hpMax,e.hp+10);
+        const kb=120; p.vx -= ux*kb; p.vy -= uy*kb;
+      }
     }
   }
   for(let i=G.enemies.length-1;i>=0;i--){
