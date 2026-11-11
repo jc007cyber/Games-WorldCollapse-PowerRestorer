@@ -3178,8 +3178,13 @@ function setupUI(){
   $('#btn-start').addEventListener('click', ()=>{ showScreen('power'); buildPowerCards(); });
   $('#btn-continue').addEventListener('click', ()=>{
     const d=Save.data;
-    if(!d.power){ toast('暂无存档'); showScreen('power'); buildPowerCards(); return; }
-    G.power=d.power; G.ult=d.ult||ULTS[0].id; G.collapse=d.collapse;
+    if(!d.power){
+      if(!d.done || !d.done.length){ toast('暂无存档'); showScreen('power'); buildPowerCards(); return; }
+      d.power=POWERS[0].id; d.ult=d.ult||ULTS[0].id;
+      if(d.collapse==null) d.collapse=20;
+      Save.save();
+    }
+    G.power=d.power; G.ult=d.ult||ULTS[0].id; G.collapse=d.collapse||20;
     syncAccent(); buildMap(); showScreen('map');
   });
   $('#btn-power-back').addEventListener('click', ()=>{
@@ -3259,7 +3264,7 @@ function boot(){
   buildPowerCards(); buildUltCards();
   const d=Save.data;
   if(d.power){ G.power=d.power; G.ult=d.ult||ULTS[0].id; G.collapse=d.collapse||20; syncAccent(); }
-  $('#btn-continue').style.display = d.power ? '' : 'none';
+  $('#btn-continue').style.display = (d.power || (d.done && d.done.length)) ? '' : 'none';
   showScreen('title');
   requestAnimationFrame(loop);
 }
