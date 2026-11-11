@@ -394,7 +394,7 @@ const POWERS = [
   { id:'space', name:'空间之权', color:'#35d6ff', color2:'#0b6f96', metal:'#c8f6ff',
     weapon:'裂隙指环', tagline:'两点之间，不必路过中间',
     atk:{mode:'ranged', dmg:14, cd:.26, speed:420, r:3, life:.9, pierce:1},
-    passive:'空间弹体穿墙贯穿敌人、伤害 +50%；冲刺变为瞬移；空间闪避：受击基础 75%，每只存活普通怪 +1.5%，有存活 Boss +15%（Boss 不计普通怪），最高 100%，成功时免疫本次伤害和僵直',
+    passive:'空间弹体穿墙贯穿敌人、伤害 +50%；冲刺变为瞬移；空间闪避：基础 75%，每只存活普通怪 +1.5%，有存活 Boss +15%，携带空间坍缩大招再 +15%，最高 100%，成功时免疫本次伤害和僵直',
     skill:{ name:'空间折叠', duration:8, cooldown:25,
       desc:'瞬移距离翻倍，残影在原地爆裂造成范围伤害；期间移动速度提升。' },
     brief:'远程 · 位移 · 机动' },
@@ -2216,7 +2216,8 @@ function spaceDodgeChance(){
     if(ETYPES[e.type]?.boss) bossAlive=true;
     else livingMobs++;
   }
-  return Math.min(1, .75 + livingMobs*.015 + (bossAlive ? .15 : 0));
+  const spaceCollapseBonus = G.ult==='u_space' ? .15 : 0;
+  return Math.min(1, .75 + livingMobs*.015 + (bossAlive ? .15 : 0) + spaceCollapseBonus);
 }
 function hurtPlayer(dmg){
   const p=G.player;
