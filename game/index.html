@@ -835,6 +835,17 @@ function setupInput(){
   bindTap('#b-skill', ()=>Input.skillReq=true);
   bindTap('#b-ult',   ()=>Input.ultReq=true);
   bindTap('#btn-pause',()=>togglePause());
+  addEventListener('blur', clearInput);
+  addEventListener('pagehide', clearInput);
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) clearInput(); });
+}
+function clearInput(){
+  Input.keys = {};
+  Input.atk = false;
+  Input.dashReq = Input.skillReq = Input.ultReq = false;
+  Input.stick = {on:false,id:null,ox:0,oy:0,x:0,y:0,dx:0,dy:0};
+  Input.move.x = Input.move.y = 0;
+  hideStick();
 }
 function bindHold(sel, fn){
   const el = $(sel); if(!el) return;
@@ -853,7 +864,7 @@ function bindTap(sel, fn){
   el.addEventListener('mousedown', e=>{ e.preventDefault(); fn(); });
 }
 function onTouch(e){
-  if(G.screen!=='battle') return;
+  if(G.screen!=='battle' && e.type!=='touchend' && e.type!=='touchcancel') return;
   const cv = $('#cv');
   for(const t of e.changedTouches){
     if(e.type==='touchstart'){
