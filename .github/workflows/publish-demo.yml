@@ -1,0 +1,53 @@
+name: Publish browser demo to Releases
+
+on:
+  push:
+    paths:
+      - .github/workflows/publish-demo.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the game
+        uses: actions/checkout@v4
+
+      - name: Package the playable HTML demo
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f game/index.html
+          mkdir -p dist/demo
+          cp game/index.html dist/demo/index.html
+          cat > dist/demo/README.txt <<'EOF'
+          WorldCollapse - PowerRestorer
+          Browser demo v0.1.0-beta
+
+          Unzip the archive and open index.html in a modern web browser.
+          This is an HTML browser-game demo, not an Android APK or a Windows EXE.
+          EOF
+          cd dist/demo
+          zip -9 ../WorldCollapse-PowerRestorer-HTML-Demo-v0.1.0-beta.zip index.html README.txt
+
+      - name: Publish pre-release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          TAG="v0.1.0-beta"
+          ZIP="dist/WorldCollapse-PowerRestorer-HTML-Demo-v0.1.0-beta.zip"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" --clobber
+          else
+            gh release create "$TAG" "$ZIP" \
+              --target "$GITHUB_SHA" \
+              --title "世界崩塌·权能恢复者 - 试玩版 V0.1 Beta" \
+              --notes "浏览器试玩 ZIP：下载并解压，打开 index.html。此版本不是 APK 或 EXE 安装包。" \
+              --prerelease
+          fi
