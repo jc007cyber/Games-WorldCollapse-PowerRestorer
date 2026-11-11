@@ -3250,7 +3250,7 @@ function setupUI(){
   });
   $('#btn-res-map').addEventListener('click', ()=>{ G.running=false; buildMap(); showScreen('map'); });
   $('#btn-res-again').addEventListener('click', ()=>{
-    if(G.collapse>=100){ showScreen('title'); $('#btn-continue').style.display='none'; }
+    if(G.collapse>=100){ showScreen('title'); }
     else if(G.phase==='win'){ buildMap(); showScreen('map'); }
     else startLevel(G.levelId);
   });
@@ -3275,7 +3275,7 @@ function boot(){
   buildPowerCards(); buildUltCards();
   const d=Save.data;
   if(d.power){ G.power=d.power; G.ult=d.ult||ULTS[0].id; G.collapse=d.collapse||20; syncAccent(); }
-  $('#btn-continue').style.display = (d.power || (d.done && d.done.length)) ? '' : 'none';
+  $('#btn-continue').style.display = '';
   showScreen('title');
   requestAnimationFrame(loop);
 }
