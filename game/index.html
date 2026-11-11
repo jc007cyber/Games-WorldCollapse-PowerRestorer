@@ -837,8 +837,11 @@ const MOVE_KEY_CODES = {
   ArrowUp:'arrowup', ArrowDown:'arrowdown'
 };
 function movementKey(e){
-  // event.code identifies the physical key, including when IME changes e.key.
-  return MOVE_KEY_CODES[e.code] || null;
+  // Prefer physical key positions, with a fallback for browsers omitting event.code.
+  const physical=MOVE_KEY_CODES[e.code];
+  if(physical) return physical;
+  const logical=(e.key||'').toLowerCase();
+  return ['a','d','w','s','arrowleft','arrowright','arrowup','arrowdown'].includes(logical) ? logical : null;
 }
 function setupInput(){
   addEventListener('keydown', e=>{
@@ -3024,7 +3027,7 @@ function showScreen(name){
   // A hidden joystick is not a released joystick: reset the actual input state.
   if(G.screen!==name || name==='battle') clearInput();
   G.screen = name;
-  for(const s of $('.screen')) s.classList.add('hidden');
+  for(const s of $$('.screen')) s.classList.add('hidden');
   $('#scr-result').classList.add('hidden');
   $('#scr-pause').classList.add('hidden');
   $('#hud').classList.toggle('hidden', name!=='battle');
