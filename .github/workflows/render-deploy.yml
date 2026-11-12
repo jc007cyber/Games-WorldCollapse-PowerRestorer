@@ -1,0 +1,54 @@
+name: Deploy Render game sites
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "game/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Trigger Render deploy hooks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy configured Render sites
+        shell: bash
+        env:
+          RENDER_HOOK_DEMO: ${{ secrets.RENDER_DEPLOY_HOOK_DEMO }}
+          RENDER_HOOK_PLAY: ${{ secrets.RENDER_DEPLOY_HOOK_PLAY }}
+          RENDER_HOOK_MIRROR: ${{ secrets.RENDER_DEPLOY_HOOK_MIRROR }}
+        run: |
+          set -euo pipefail
+
+          configured=0
+
+          trigger_deploy() {
+            local secret_name="$1"
+            local hook_url="$2"
+
+            if [[ -z "$hook_url" ]]; then
+              echo "::warning::Missing GitHub Actions secret ${secret_name}; skipping this site."
+              return 0
+            fi
+
+            configured=$((configured + 1))
+            echo "Triggering Render deployment for ${secret_name}..."
+            curl --fail --silent --show-error \
+              --retry 3 --retry-delay 5 \
+              --request POST "$hook_url"
+            echo
+          }
+
+          trigger_deploy "RENDER_DEPLOY_HOOK_DEMO" "$RENDER_HOOK_DEMO"
+          trigger_deploy "RENDER_DEPLOY_HOOK_PLAY" "$RENDER_HOOK_PLAY"
+          trigger_deploy "RENDER_DEPLOY_HOOK_MIRROR" "$RENDER_HOOK_MIRROR"
+
+          if [[ "$configured" -eq 0 ]]; then
+            echo "::error::No Render deploy hook secrets are configured."
+            exit 1
+          fi
