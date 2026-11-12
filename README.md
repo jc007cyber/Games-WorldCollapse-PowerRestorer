@@ -11,6 +11,8 @@
 
 Render 服务 `worldcollapse-powerrestorer-demo` 已关联本仓库的 `main` 分支，开启 `Auto Deploy: yes`，触发条件为 `commit`。
 
+原版试玩站还由 Render Blueprint `worldcollapse-autodeploy` 托管，已启用 `autoSync`：GitHub `main` 更新后会尝试同步配置及自动构建。实际以 Render Deploys 记录为准。
+
 1. 修改 `game/index.html` 并提交到 `main`。
 2. Render 自动拉取最新提交。
 3. 执行 `mkdir -p site && cp game/index.html site/index.html`。
