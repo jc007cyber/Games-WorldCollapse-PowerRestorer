@@ -1,0 +1,6 @@
+# Netlify: publish the existing browser game directly from the repository.
+[build]
+  publish = "game"
+
+[context.production]
+  command = ""
