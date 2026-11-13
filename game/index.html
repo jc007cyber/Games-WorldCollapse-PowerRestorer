@@ -150,6 +150,8 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
 .pbtn.atk{width:clamp(66px,16vmin,96px);height:clamp(66px,16vmin,96px);border-color:var(--accent);
   background:radial-gradient(circle at 50% 35%,var(--accent-soft),rgba(18,16,32,.8));box-shadow:0 0 20px var(--accent-soft)}
 .pbtn.sk{border-color:var(--accent)}
+.pbtn.sk2{border-color:#a4c9ff}
+.pad.has-skill2 .pbtn.atk{grid-column:2}
 .pbtn.ult{border-color:#ffd76b}
 .pbtn .cd{position:absolute;inset:0;border-radius:50%;background:rgba(4,4,10,.78);
   display:grid;place-items:center;text-align:center;white-space:pre-line;padding:3px;
@@ -181,7 +183,8 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
 .chip.on{border-color:var(--accent);color:var(--accent)}
 @media (orientation:landscape) and (min-width:700px){
   .cardwrap{grid-template-columns:repeat(2,1fr)}
-  .pad{grid-template-columns:repeat(4,auto);right:calc(18px + var(--safe-r));bottom:calc(18px + var(--safe-b))}
+  .pad{grid-template-columns:repeat(5,auto);right:calc(18px + var(--safe-r));bottom:calc(18px + var(--safe-b))}
+  .pad.has-skill2 .pbtn.atk{grid-column:auto}
   #hud .vitals{width:min(32%,340px)}
 }
 @media (orientation:portrait) and (min-width:600px){
@@ -214,7 +217,7 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
           <div style="margin-top:1.6em;color:#5d5878;font-size:clamp(9px,2.2vmin,12px);letter-spacing:.14em;line-height:2">
             武器与弹幕会自动锁定并转向最近的敌人（转向带平滑过渡）<br>
             时间之权的「时间暂停」带有全屏倒计时演出<br>
-            键鼠：WASD 移动 · 左键/J 攻击 · Shift 冲刺 · Q 权能技 · E 大招<br>
+            键鼠：WASD 移动 · 左键/J 攻击 · Shift 冲刺 · Q 一技能 · R 二技能 · E 固定大招<br>
             触屏：左半屏拖动移动 · 右侧按钮操作
           </div>
         </div>
@@ -282,6 +285,7 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
       <div class="bossbar" id="bossbar"><div class="n" id="boss-n">故障守卫</div><div class="bar"><i id="boss-hp"></i></div></div>
       <div class="pad">
         <div class="pbtn sk" id="b-skill">权能<small id="b-skill-n">Q</small><div class="cd hidden" id="b-skill-cd"></div></div>
+        <div class="pbtn sk2 hidden" id="b-skill2">二技能<small id="b-skill2-n">R</small><div class="cd hidden" id="b-skill2-cd"></div></div>
         <div class="pbtn ult" id="b-ult">大招<small id="b-ult-n">E</small><div class="cd hidden" id="b-ult-cd"></div></div>
         <div class="pbtn" id="b-dash">冲刺<small>Shift</small></div>
         <div class="pbtn atk" id="b-atk">攻击<small>长按</small></div>
@@ -396,6 +400,7 @@ const POWERS = [
     passive:'移动时会留下时之残影，残影消散时对周围造成少量伤害',
     skill:{ name:'时间暂停', duration:10, cooldown:45,
       desc:'冻结全场敌人与弹幕 10 秒，自身行动如常，画面转为金色调。' },
+    skill2:{name:'时之刻录',cooldown:3,followWindow:2.5,double:true,desc:'R一段在原地刻录时间标记，2.5秒内再次按R瞬移回标记；回溯冲击造成伤害并为大招充能，全场时停1秒，自身移动速度+100%、攻击速度+50%，均持续1秒。'},
     brief:'远程 · 控制 · 安全输出' },
   { id:'life', name:'生命之权', color:'#58e08a', color2:'#1f7a4a', metal:'#c8ffdc',
     weapon:'生息藤杖', tagline:'一切伤口，终会发芽',
@@ -403,6 +408,7 @@ const POWERS = [
     passive:'每 8 秒自动回复少量生命；周围敌人越多，回复越快',
     skill:{ name:'生命绽放', duration:12, cooldown:40,
       desc:'持续回复生命；荆棘环绕对近身敌人反伤，藤蔓束缚使其减速。' },
+    skill2:{name:'新生藤刺',cooldown:3,double:true,desc:'一段释放近距离藤刺，二段引爆藤蔓造成范围伤害并回复少量生命；命中可为大招充能。'},
     brief:'远程 · 续航 · 反伤' },
   { id:'fate', name:'命运之权', color:'#ff6fa8', color2:'#8c2350', metal:'#ffd0e4',
     weapon:'命运骰', tagline:'骰子落下之前，胜负无人知晓',
@@ -410,6 +416,7 @@ const POWERS = [
     passive:'攻击有 25% 概率掷出命运：暴击 / 连击 / 减速 / 爆裂',
     skill:{ name:'命运轮盘', duration:15, cooldown:35,
       desc:'轮盘常转：每次攻击必定触发随机命运效果，并大幅提升触发威力。' },
+    skill2:{name:'双面命骰',cooldown:2.5,double:true,desc:'一段掷出附带随机效果的命运弹，二段追加独立判定；两段命中都可为大招充能。'},
     brief:'远程 · 随机 · 高风险高回报' },
   { id:'order', name:'秩序之权', color:'#cfe4ff', color2:'#4a6a9c', metal:'#ffe9a8',
     weapon:'律令之剑', tagline:'万物各行其位，各守其序',
@@ -418,6 +425,7 @@ const POWERS = [
     passive:'连续命中同一目标叠加「裁定」标记（最多 3 层），第 4 次命中触发额外审判伤害。',
     skill:{ name:'秩序领域', duration:40, cooldown:15,
       desc:'展开秩序领域：领域内敌人移动速度降低 40%、受到伤害增加 30%；自身攻击附带律令斩击。敌人开始燃烧后再次施放领域，每次使当前生效的秩序之炎与秩序燃烧各延长 15 秒，可重复叠加；未开始燃烧时施放不预存加成。' },
+    skill2:{name:'律令双斩',cooldown:3,double:true,desc:'一段贯穿剑气对目标叠加1层裁定，二段强化剑气再叠加1层；不触发秩序焚灭或延长秩序之炎。命中可为大招充能。'},
     brief:'近战 · 领域 · 稳定增伤' },
   { id:'space', name:'空间之权', color:'#35d6ff', color2:'#0b6f96', metal:'#c8f6ff',
     weapon:'裂隙指环', tagline:'两点之间，不必路过中间',
@@ -425,6 +433,7 @@ const POWERS = [
     passive:'空间弹体穿墙贯穿敌人、伤害 +50%；冲刺瞬移；空间闪避基础 75%，每只存活普通怪 +1.5%，有存活 Boss +15%；专属空间坍缩再 +15% 闪避（最高 100%）；闪避免疫本次伤害与僵直',
     skill:{ name:'空间折叠', duration:8, cooldown:25,
       desc:'瞬移距离翻倍，残影在原地爆裂造成范围伤害；期间移动速度提升。' },
+    skill2:{name:'裂隙交错',cooldown:2.5,double:true,desc:'一段向前短距离闪现，二段发射穿墙空间裂刃造成范围伤害；命中可为大招充能。'},
     brief:'远程 · 位移 · 机动' },
   { id:'void', name:'虚无之权', color:'#b07bff', color2:'#2a1c40', metal:'#e0d4ff',
     weapon:'虚无之核', tagline:'被抹去的，从未存在过',
@@ -432,6 +441,7 @@ const POWERS = [
     passive:'攻击无视敌人护甲，并将造成伤害的 12% 转化为生命',
     skill:{ name:'虚无吞噬', duration:10, cooldown:35,
       desc:'持续吞噬周围敌方弹幕；攻击吸血提升至 30%，并削弱敌人防御。' },
+    skill2:{name:'零域刻印',cooldown:3,double:false,desc:'封印附近至多2名敌人，造成伤害、禁止治疗并提高其受到的伤害；命中可为大招充能。'},
     brief:'远程 · 穿透 · 吸血' },
   { id:'war', name:'战意之权', color:'#ff7548', color2:'#8e2d1d', metal:'#ffe0b0',
     weapon:'陨星战锤', tagline:'以重锤击碎敌阵，以战意震荡大地', hp:175, moveSpeedMul:.92,
@@ -439,6 +449,7 @@ const POWERS = [
     passive:'近战命中累积战意；连续命中4次后，下一次命中释放圆形震荡波，造成额外伤害、击退与减速',
     skill:{ name:'崩山重击', duration:.65, cooldown:22,
       desc:'高举陨星战锤砸向地面，对周围大范围敌人造成重击伤害，强力击退并减速。' },
+    skill2:{name:'战锤双震',cooldown:3,double:true,desc:'一段重击并击退前方敌人，二段追加圆形震荡波；命中可为大招充能。'},
     brief:'近战 · 重锤 · 范围震荡' }
 ];
 const POWER_MAP = Object.fromEntries(POWERS.map(p=>[p.id,p]));
@@ -870,7 +881,7 @@ const W2S = (wx,wy) => ({ x:(wx-G.cam.x)*G.scale, y:(wy-G.cam.y)*G.scale });
 const Input = {
   keys:{}, mx:0, my:0, mdown:false, hasMouse:false,
   stick:{on:false, id:null, ox:0, oy:0, x:0, y:0, dx:0, dy:0},
-  atk:false, dashReq:false, skillReq:false, ultReq:false,
+  atk:false, dashReq:false, skillReq:false, skill2Req:false, ultReq:false,
   move:{x:0, y:0}, aim:{x:1, y:0}
 };
 const MOVE_KEY_CODES = {
@@ -895,6 +906,7 @@ function setupInput(){
     if(e.key===' ') e.preventDefault();
     if(e.key==='j'||e.key==='J') Input.atk = true;
     if(e.key==='q'||e.key==='Q') Input.skillReq = true;
+    if(e.key==='r'||e.key==='R') Input.skill2Req = true;
     if(e.key==='e'||e.key==='E') Input.ultReq = true;
     if(e.key==='Escape') togglePause();
   });
@@ -917,6 +929,7 @@ function setupInput(){
   bindHold('#b-atk',  v=>Input.atk=v);
   bindTap('#b-dash',  ()=>Input.dashReq=true);
   bindTap('#b-skill', ()=>Input.skillReq=true);
+  bindTap('#b-skill2',()=>Input.skill2Req=true);
   bindTap('#b-ult',   ()=>Input.ultReq=true);
   bindTap('#btn-pause',()=>togglePause());
   addEventListener('blur', clearInput);
@@ -936,7 +949,7 @@ function resetStick(){
 function clearInput(){
   Input.keys = {};
   Input.atk = false;
-  Input.dashReq = Input.skillReq = Input.ultReq = false;
+  Input.dashReq = Input.skillReq = Input.skill2Req = Input.ultReq = false;
   resetStick();
   Input.move.x = Input.move.y = 0;
 }
@@ -3219,6 +3232,7 @@ function buildPowerCards(){
         `<div class="detail-title">专属技能</div>
          <div class="skill-head"><b class="skill-name">${P.skill.name}</b><span class="skill-key">Q 一技能</span></div>
          <p class="skill-desc">${P.skill.desc}</p>
+         ${P.skill2 ? `<div class="skill-head" style="margin-top:9px"><b class="skill-name">${P.skill2.name}</b><span class="skill-key">R 二技能</span></div><p class="skill-desc">${P.skill2.desc}</p>` : ''}
          <div class="skill-head" style="margin-top:9px"><b class="skill-name">${ownUlt.name}</b><span class="skill-key">E 专属大招</span></div>
          <p class="skill-desc">${ownUlt.desc}</p>`;
       $('#btn-power-next').disabled = false;
