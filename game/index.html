@@ -376,7 +376,7 @@ function tickFutureKarmaUltCharge(pool,dt){
   if(!pool || pool.charges>=pool.maxCharges || !Number.isFinite(dt) || dt<=0) return 0;
   pool.rechargeLeft-=dt;
   let restored=0;
-  while(pool.rechargeLeft<=0 && pool.charges<pool.maxCharges){
+  while(pool.rechargeLeft<=1e-8 && pool.charges<pool.maxCharges){
     pool.charges++;
     restored++;
     if(pool.charges>=pool.maxCharges){
