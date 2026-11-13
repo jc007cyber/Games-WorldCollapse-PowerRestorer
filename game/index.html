@@ -355,6 +355,45 @@ function angApproach(cur, want, dt, boost){
 }
 const KARMA_MAX_STACKS = 175;
 const KARMA_SKILL_BONUS_STACKS = 100;
+
+// Reserved for a FUTURE redesign of Karma's ultimate. This pool is deliberately
+// not wired to the current ultimate, skill buttons, HUD, or any other hero.
+// One full cooldown restores exactly one charge, up to the maximum of three.
+const FUTURE_KARMA_ULT_MAX_CHARGES = 3;
+function createFutureKarmaUltChargePool(rechargeCooldown, initialCharges=FUTURE_KARMA_ULT_MAX_CHARGES){
+  if(!Number.isFinite(rechargeCooldown) || rechargeCooldown<=0){
+    throw new Error('Future Karma ultimate recharge cooldown must be positive');
+  }
+  const charges=Math.max(0,Math.min(FUTURE_KARMA_ULT_MAX_CHARGES,
+    Number.isFinite(initialCharges)?Math.floor(initialCharges):0));
+  return {
+    charges,
+    maxCharges:FUTURE_KARMA_ULT_MAX_CHARGES,
+    rechargeCooldown,
+    rechargeLeft:charges<FUTURE_KARMA_ULT_MAX_CHARGES?rechargeCooldown:0
+  };
+}
+function spendFutureKarmaUltCharge(pool){
+  if(!pool || pool.charges<=0) return false;
+  pool.charges--;
+  if(pool.rechargeLeft<=0) pool.rechargeLeft=pool.rechargeCooldown;
+  return true;
+}
+function tickFutureKarmaUltCharge(pool,dt){
+  if(!pool || pool.charges>=pool.maxCharges || !Number.isFinite(dt) || dt<=0) return 0;
+  pool.rechargeLeft-=dt;
+  let restored=0;
+  while(pool.rechargeLeft<=0 && pool.charges<pool.maxCharges){
+    pool.charges++;
+    restored++;
+    if(pool.charges>=pool.maxCharges){
+      pool.rechargeLeft=0;
+    } else {
+      pool.rechargeLeft+=pool.rechargeCooldown;
+    }
+  }
+  return restored;
+}
 const POWERS = [
   { id:'karma', name:'业报之权', color:'#a86bff', color2:'#5b2bbf', metal:'#d9c7ff',
     weapon:'业报之镰', tagline:'以因果之镰，收割罪业',
