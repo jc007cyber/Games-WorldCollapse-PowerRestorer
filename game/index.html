@@ -152,6 +152,7 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
 .pbtn.sk{border-color:var(--accent)}
 .pbtn.sk2{border-color:#a4c9ff}
 .pad.has-skill2 .pbtn.atk{grid-column:2}
+.bossbar.skill2-layout{bottom:calc(202px + var(--safe-b))}
 .pbtn.ult{border-color:#ffd76b}
 .pbtn .cd{position:absolute;inset:0;border-radius:50%;background:rgba(4,4,10,.78);
   display:grid;place-items:center;text-align:center;white-space:pre-line;padding:3px;
@@ -185,6 +186,7 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
   .cardwrap{grid-template-columns:repeat(2,1fr)}
   .pad{grid-template-columns:repeat(5,auto);right:calc(18px + var(--safe-r));bottom:calc(18px + var(--safe-b))}
   .pad.has-skill2 .pbtn.atk{grid-column:auto}
+  .bossbar.skill2-layout{bottom:calc(110px + var(--safe-b))}
   #hud .vitals{width:min(32%,340px)}
 }
 @media (orientation:portrait) and (min-width:600px){
@@ -2083,6 +2085,7 @@ function startLevel(id){
   const s2=POWER_MAP[G.power].skill2;
   $('#b-skill2').classList.toggle('hidden',!s2);
   $('.pad').classList.toggle('has-skill2',!!s2);
+  $('#bossbar').classList.toggle('skill2-layout',!!s2);
   $('#b-skill2-n').textContent=s2?s2.name:'R';
   $('#b-ult-n').textContent = G.ult==='u_order'
     ? (G.orderNextAnnihilation ? '秩序焚灭' : '秩序审判')
