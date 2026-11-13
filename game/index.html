@@ -2067,7 +2067,6 @@ function makePlayer(pwId){
     atkCd:0, dashCd:0, dashT:0, dashX:1, dashY:0, inv:0, hurtFlash:0,
     skillCd:0, skillT:0, 
     skill2Cd:0, skill2FollowT:0, skill2Mark:null, skill2SpeedT:0,
-    skill2Shield:0, skill2FateHits:0, skill2FateT:0,
     ult:0, ultT:0, karma:0, lifeTick:0, warHits:0, warReady:false,
     pw:P, atkCount:0, roll:0, aimAng:0, atkAng:0, tgt:null, lockFx:0, turnBoost:0,
     trail:[], trailT:0, dustT:0, hitShake:0, arcGhost:0 };
@@ -2835,7 +2834,6 @@ function updateBattle(dt){
   p.skill2Cd=Math.max(0,p.skill2Cd-dt);
   p.skill2FollowT=Math.max(0,p.skill2FollowT-dt);
   p.skill2SpeedT=Math.max(0,p.skill2SpeedT-dt);
-  p.skill2FateT=Math.max(0,p.skill2FateT-dt);
   if(p.skill2FollowT<=0 || p.skill2Cd<=0){p.skill2Mark=null; p.skill2FollowT=0;}
   if(combatActive) p.skillCd = Math.max(0, p.skillCd-dt);
   p.inv -= dt; p.hurtFlash -= dt;
