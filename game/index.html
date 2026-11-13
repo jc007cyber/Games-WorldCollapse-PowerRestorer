@@ -2198,7 +2198,7 @@ function spawnEnemy(type, at){
   const scaledHp=Math.round(T.hp*hpScale);
   const e = { id:randi(1,9999), type, x, y, vx:0, vy:0, r:T.r, hp:scaledHp, hpMax:scaledHp,
     cool:rand(.4,1.6), hurt:0, burn:0, slow:0, weak:0, charging:0, chargeCd:rand(1,3),
-    blinkCd:rand(1,2.5), aimX:0, aimY:1, touchCd:0, dead:false, pull:0, mark:0,
+    blinkCd:rand(1,2.5), aimX:0, aimY:1, touchCd:0, dead:false, pull:0, mark:0, skill2SealT:0,
     orderFlameT:0, orderFlamePermanent:false, orderBurnT:0,
     summonCd:rand(4,6), bossPhase:3, stun:0 };
   if(G.orderEclipseT>0) applyOrderFlame(e,0,true,G.orderEclipseBurnT||7);
@@ -2232,6 +2232,7 @@ function damageEnemy(e, dmg, opt){
   let d = dmg * (spaceTimeDamageBonusActive() ? 2 : 1) *
     (karmaSkillDamageBonusActive() ? 2 : 1);
   if(e.weak>0) d *= 1.2;
+  if((e.skill2SealT||0)>0) d *= 1.2;
   for(const z of G.zones) if(z.kind==='order' && dist2(e.x,e.y,z.x,z.y) < z.r*z.r) d *= 1.3;
   if(T.armor && !opt.trueDmg) d *= (1 - T.armor);
   e.hp -= d; e.hurt = .12;
@@ -2542,6 +2543,167 @@ function trySkill(p){
     for(let i=0;i<10;i++) G.parts.push(mkPart(p.x,p.y-8,P.metal,{sp:rand(90,190),life:rand(.22,.48),size:2,g:24}));
   }
 }
+// R is a short-cooldown skill, NOT a charge-based skill. Only the future
+// (currently inactive) Karma ultimate has a three-charge pool.
+function skill2Hit(e,dmg,ctx,opts){
+  if(!e || e.dead || e.hp<=0) return false;
+  damageEnemy(e,dmg,opts||{});
+  if(ctx && !ctx.seen.has(e)){
+    ctx.seen.add(e);
+    // Meaningful second-skill hits fill the ordinary ultimate meter.
+    // The per-stage cap prevents wide AOE attacks from instantly refilling it.
+    const gain=Math.min(2,Math.max(0,8-ctx.gained));
+    ctx.gained+=gain;
+    ctx.player.ult=clamp(ctx.player.ult+gain,0,100);
+  }
+  return true;
+}
+function skill2Area(p,ctx,radius,damage,onHit){
+  let hits=0;
+  for(const e of G.enemies){
+    if(e.dead || e.hp<=0 || dist2(e.x,e.y,p.x,p.y)>Math.pow(radius+e.r,2)) continue;
+    if(skill2Hit(e,damage,ctx)){hits++; if(onHit && !e.dead) onHit(e);}
+  }
+  return hits;
+}
+function skill2Line(p,ctx,length,width,damage,onHit){
+  const ux=Math.cos(p.aimAng),uy=Math.sin(p.aimAng);
+  let hits=0;
+  for(const e of G.enemies){
+    if(e.dead || e.hp<=0) continue;
+    const dx=e.x-p.x,dy=e.y-p.y,along=dx*ux+dy*uy;
+    if(along<0 || along>length+e.r) continue;
+    if(Math.abs(dx*uy-dy*ux)>width+e.r) continue;
+    if(skill2Hit(e,damage,ctx)){hits++; if(onHit && !e.dead) onHit(e);}
+  }
+  G.slashes.push({x:p.x+ux*length*.5,y:p.y-8+uy*length*.5,
+    a:p.aimAng,arc:.35,r:length*.5,t:0,dur:.24,color:p.pw.color});
+  return hits;
+}
+function skill2OrderMark(e,damage){
+  e.mark=(e.mark||0)+1;
+  if(e.mark>=4){
+    e.mark=0;
+    damageEnemy(e,damage*.8,{big:true});
+    burst(e.x,e.y-8,8,'#ffe9a8',110);
+  }
+}
+function activateSkill2Stage(p,stage){
+  const P=p.pw,ctx={player:p,seen:new Set(),gained:0},damageMul=HERO_BALANCE.damageMul;
+  const fx=(radius,color)=>G.slashes.push({x:p.x,y:p.y-8,a:0,arc:TAU,r:radius,t:0,dur:.27,color});
+  if(P.id==='time'){
+    if(stage===1){
+      p.skill2Mark={x:p.x,y:p.y};
+      burst(p.x,p.y-8,12,'#ffcc44',75);
+      toast('时间刻录 · 2.5秒内可回溯');
+    } else if(p.skill2Mark){
+      const m=p.skill2Mark;
+      p.x=clamp(m.x,14,G.arena.w-14);p.y=clamp(m.y,20,G.arena.h-14);
+      p.vx=0;p.vy=0;resolveBlocks(p);
+      G.freeze=Math.max(G.freeze,1);
+      G.stopDur=Math.max(G.stopDur,1);
+      G.stopIntro=Math.max(G.stopIntro,.25);
+      p.skill2SpeedT=1;
+      fx(60,'#ffcc44');
+      skill2Area(p,ctx,60,28*damageMul);
+      burst(p.x,p.y-8,20,'#fff0b8',120);
+      toast('时之回溯 · 时间暂停 1 秒');
+    }
+  } else if(P.id==='life'){
+    if(stage===1){
+      fx(76,'#58e08a');
+      skill2Area(p,ctx,76,24*damageMul,e=>{e.slow=Math.max(e.slow,1.4);});
+      toast('新生藤刺');
+    } else {
+      fx(92,'#c8ffdc');
+      const hits=skill2Area(p,ctx,92,32*damageMul,e=>{e.slow=Math.max(e.slow,1.2);});
+      healPlayer(Math.min(16,5+hits*3));
+      toast('藤蔓绽裂');
+    }
+  } else if(P.id==='fate'){
+    const e=nearestEnemy(p.x,p.y-8,250);
+    const roll=Math.random();
+    if(e && !e.dead){
+      const base=(stage===1?34:43)*damageMul;
+      const boost=roll<.25?1.8:roll<.5?1.3:1;
+      skill2Hit(e,base*boost,ctx,{big:stage===2});
+      if(!e.dead){
+        if(roll>=.5&&roll<.75)e.slow=Math.max(e.slow,2);
+        if(roll>=.75)e.burn=Math.max(e.burn,2);
+      }
+      G.slashes.push({x:e.x,y:e.y-8,a:0,arc:TAU,r:24,t:0,dur:.28,color:'#ff6fa8'});
+    }
+    toast(stage===1?'双面命骰 · 一面':'双面命骰 · 二面');
+  } else if(P.id==='order'){
+    skill2Line(p,ctx,stage===1?172:205,stage===1?16:22,
+      (stage===1?45:60)*damageMul,e=>skill2OrderMark(e,30*damageMul));
+    toast(stage===1?'律令双斩 · 一段':'律令双斩 · 二段');
+  } else if(P.id==='space'){
+    if(stage===1){
+      const x=p.x,y=p.y,ux=Math.cos(p.aimAng),uy=Math.sin(p.aimAng);
+      for(let d=90;d>=12;d-=13){
+        const nx=clamp(x+ux*d,14,G.arena.w-14),ny=clamp(y+uy*d,20,G.arena.h-14);
+        if(!blockAt(nx,ny-8,p.r+3) && !blockAt(nx,ny,p.r+3)){
+          p.x=nx;p.y=ny;break;
+        }
+      }
+      p.vx=0;p.vy=0;resolveBlocks(p);
+      fx(34,'#35d6ff');
+      skill2Area(p,ctx,34,24*damageMul);
+      burst(x,y-8,12,'#35d6ff',110);
+      toast('裂隙交错 · 折跃');
+    } else {
+      skill2Line(p,ctx,210,25,55*damageMul,e=>{e.slow=Math.max(e.slow,.5);});
+      toast('裂隙交错 · 切割');
+    }
+  } else if(P.id==='void'){
+    const targets=G.enemies.filter(e=>!e.dead && e.hp>0)
+      .sort((a,b)=>dist2(a.x,a.y,p.x,p.y)-dist2(b.x,b.y,p.x,p.y))
+      .filter(e=>dist2(e.x,e.y,p.x,p.y)<250*250).slice(0,2);
+    for(const e of targets){
+      e.skill2SealT=Math.max(e.skill2SealT||0,3);
+      skill2Hit(e,34*damageMul,ctx);
+      G.slashes.push({x:e.x,y:e.y-8,a:0,arc:TAU,r:e.r+14,t:0,dur:.45,color:'#b07bff'});
+    }
+    toast('零域刻印');
+  } else if(P.id==='war'){
+    if(stage===1){
+      const ux=Math.cos(p.aimAng),uy=Math.sin(p.aimAng);
+      skill2Line(p,ctx,83,55,59*damageMul,e=>{
+        const d=Math.hypot(e.x-p.x,e.y-p.y)||1;
+        e.vx+=(e.x-p.x)/d*190;
+        e.vy+=(e.y-p.y)/d*190;
+        e.slow=Math.max(e.slow,.8);
+      });
+      toast('战锤双震 · 第一击');
+    } else {
+      fx(103,'#ff7548');
+      skill2Area(p,ctx,103,70*damageMul,e=>{
+        const d=Math.hypot(e.x-p.x,e.y-p.y)||1;
+        e.vx+=(e.x-p.x)/d*215;
+        e.vy+=(e.y-p.y)/d*215;
+        e.slow=Math.max(e.slow,1.4);
+      });
+      G.shake=Math.max(G.shake,10);
+      toast('战锤双震 · 第二击');
+    }
+  }
+}
+function trySkill2(p){
+  const S=p.pw.skill2;
+  if(!S) return; // Karma is intentionally untouched until its redesign.
+  if(S.double && p.skill2FollowT>0 && p.skill2Cd>0){
+    activateSkill2Stage(p,2);
+    p.skill2FollowT=0;
+    p.skill2Mark=null;
+    return;
+  }
+  if(p.skill2Cd>0) return;
+  p.skill2Cd=S.cooldown;
+  p.skill2FollowT=S.double?Math.min(S.followWindow||S.cooldown,S.cooldown):0;
+  activateSkill2Stage(p,1);
+}
+
 function tryUlt(p){
   if(p.ult < 100) return;
   p.ult = 0; p.ultT = 1.2;
@@ -2813,6 +2975,7 @@ function updateEnemies(dt){
     }
     e.hurt = Math.max(0, e.hurt-dt); e.burn = Math.max(0,e.burn-dt);
     e.slow = Math.max(0,e.slow-dt); e.weak = Math.max(0,e.weak-dt);
+    e.skill2SealT=Math.max(0,(e.skill2SealT||0)-dt);
     e.touchCd -= dt*(orderFlameActive && !rangedEnemy ? .25 : 1);
     e.stun=Math.max(0,(e.stun||0)-dt);
     if(e.burn>0){
@@ -2835,7 +2998,7 @@ function updateEnemies(dt){
     const lineBlocked=(e.type==='shooter'||e.type==='sentinel')&&blockLine(e.x,e.y-8,p.x,p.y-8);
     e.aimX=ux; e.aimY=uy;
     if(e.type==='grunt' || e.type==='brute' || e.type==='siphon'){
-      if(e.type==='siphon' && !orderFlameActive && e.hp<e.hpMax) e.hp=Math.min(e.hpMax,e.hp+T.regen*dt);
+      if(e.type==='siphon' && !orderFlameActive && e.skill2SealT<=0 && e.hp<e.hpMax) e.hp=Math.min(e.hpMax,e.hp+T.regen*dt);
       const sp = T.spd*slowMul*(e.type==='brute'&&e.charging>0?3.2:1);
       e.vx = lerp(e.vx, chaseX*sp, .12); e.vy = lerp(e.vy, chaseY*sp, .12);
     } else if(e.type==='shooter' || e.type==='sentinel'){
@@ -2937,7 +3100,7 @@ function updateEnemies(dt){
       e.touchCd = .6;
       const evaded = hurtPlayer(T.dmg * (e.type==='brute'&&e.charging>0 ? 1.4 : 1)) === false;
       if(!evaded){
-        if(e.type==='siphon' && !orderFlameActive) e.hp=Math.min(e.hpMax,e.hp+10);
+        if(e.type==='siphon' && !orderFlameActive && e.skill2SealT<=0) e.hp=Math.min(e.hpMax,e.hp+10);
         const kb=120; p.vx -= ux*kb; p.vy -= uy*kb;
       }
     }
