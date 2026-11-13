@@ -2049,7 +2049,10 @@ function makePlayer(pwId){
   return { x:G.arena.w/2, y:G.arena.h/2+60, vx:0, vy:0, r:6,
     hp:baseHp, hpMax:baseHp, face:1, aimX:1, aimY:0, swing:0,
     atkCd:0, dashCd:0, dashT:0, dashX:1, dashY:0, inv:0, hurtFlash:0,
-    skillCd:0, skillT:0, ult:0, ultT:0, karma:0, lifeTick:0, warHits:0, warReady:false,
+    skillCd:0, skillT:0, 
+    skill2Cd:0, skill2FollowT:0, skill2Mark:null, skill2SpeedT:0,
+    skill2Shield:0, skill2FateHits:0, skill2FateT:0,
+    ult:0, ultT:0, karma:0, lifeTick:0, warHits:0, warReady:false,
     pw:P, atkCount:0, roll:0, aimAng:0, atkAng:0, tgt:null, lockFx:0, turnBoost:0,
     trail:[], trailT:0, dustT:0, hitShake:0, arcGhost:0 };
 }
@@ -2077,6 +2080,10 @@ function startLevel(id){
   $('#hud-power').style.color = POWER_MAP[G.power].color;
   $('#bossbar').classList.remove('on');
   $('#b-skill-n').textContent = POWER_MAP[G.power].skill.name;
+  const s2=POWER_MAP[G.power].skill2;
+  $('#b-skill2').classList.toggle('hidden',!s2);
+  $('.pad').classList.toggle('has-skill2',!!s2);
+  $('#b-skill2-n').textContent=s2?s2.name:'R';
   $('#b-ult-n').textContent = G.ult==='u_order'
     ? (G.orderNextAnnihilation ? '秩序焚灭' : '秩序审判')
     : ULT_MAP[G.ult].name;
@@ -2097,6 +2104,8 @@ function startPart(i){
   const m=G.map, p=G.player;
   p.x = m.spawn[0]*G.arena.w; p.y = m.spawn[1]*G.arena.h;
   p.vx=0; p.vy=0; p.tgt=null; p.lockFx=0; p.trail.length=0;
+  // Never return to the previous map using a time skill mark.
+  p.skill2Mark=null; p.skill2FollowT=0; p.skill2SpeedT=0;
   p.swing=0; p.dashT=0; p.hitShake=0;
   resolveBlocks(p);
   G.core = { x:G.arena.w/2, y:G.arena.h*0.46, hp:100, max:100, r:16, appear:0 };
@@ -2372,6 +2381,7 @@ function doAttack(p){
   p.swing = 1; p.atkCount++;
   let dmg = A.dmg * HERO_BALANCE.damageMul;
   if(P.id==='karma') dmg *= (1 + p.karma*0.02) * (p.skillT>0 ? 1.6 : 1);
+  if(P.id==='time' && p.skill2SpeedT>0) p.atkCd/=1.5;
   if(P.id==='space') dmg *= 1.5;
   if(p.skillT>0 && P.id==='order') dmg *= 1.25;
   if(P.id==='fate' && (p.skillT>0 || Math.random()<.25)) dmg = rollFate(p, dmg);
@@ -2643,6 +2653,11 @@ function updateBattle(dt){
   p.lockFx = tgt ? Math.min(1, (p.lockFx||0) + dt*6) : Math.max(0, (p.lockFx||0) - dt*6);
   const combatActive = G.enemies.some(e=>!e.dead && e.hp>0) || (G.phase==='core' && G.core && G.core.hp>0);
   p.atkCd -= dt; p.dashCd -= dt;
+  p.skill2Cd=Math.max(0,p.skill2Cd-dt);
+  p.skill2FollowT=Math.max(0,p.skill2FollowT-dt);
+  p.skill2SpeedT=Math.max(0,p.skill2SpeedT-dt);
+  p.skill2FateT=Math.max(0,p.skill2FateT-dt);
+  if(p.skill2FollowT<=0 || p.skill2Cd<=0){p.skill2Mark=null; p.skill2FollowT=0;}
   if(combatActive) p.skillCd = Math.max(0, p.skillCd-dt);
   p.inv -= dt; p.hurtFlash -= dt;
   p.swing = Math.max(0, p.swing - dt*4);
@@ -2654,6 +2669,7 @@ function updateBattle(dt){
   p.ult = clamp(p.ult + dt*1.2, 0, 100);
   let spd = HERO_BALANCE.moveSpeed * (p.pw.moveSpeedMul||1);
   if(p.pw.id==='space' && p.skillT>0) spd *= 1.45;
+  if(p.pw.id==='time' && p.skill2SpeedT>0) spd *= 2;
   if(p.pw.id==='karma' && p.skillT>0) spd *= .92;
   if(p.dashT>0){
     p.dashT -= dt;
@@ -2696,6 +2712,7 @@ function updateBattle(dt){
   p.hitShake = Math.max(0, (p.hitShake||0) - dt*26);
   if(I.dashReq){ I.dashReq=false; tryDash(p); }
   if(I.skillReq){ I.skillReq=false; trySkill(p); }
+  if(I.skill2Req){ I.skill2Req=false; trySkill2(p); }
   if(I.ultReq){ I.ultReq=false; tryUlt(p); }
   if(I.atk && p.atkCd<=0) doAttack(p);
   healPlayer(HERO_BALANCE.passiveRegen*dt);
@@ -3054,6 +3071,12 @@ function renderBattle(){
     }
   }
   const p2=G.player;
+  if(p2 && p2.skill2Mark && p2.skill2FollowT>0){
+    const m=p2.skill2Mark,t=G.time;
+    ring(m.x,m.y-8,12+Math.sin(t*11)*2,'#ffcc44',.90,2);
+    ring(m.x,m.y-8,20,'#fff0b8',.35,1);
+    pxo(m.x-2,m.y-10,4,4,'#ffffff',.8);
+  }
   if(p2 && p2.tgt && !p2.tgt.dead && p2.lockFx>0){
     const e=p2.tgt, r=e.r+7+Math.sin(G.time*3)*1.5, a=p2.lockFx;
     for(let i=0;i<4;i++){
@@ -3128,6 +3151,20 @@ function updateHud(){
     sk.classList.add('hidden');
     skillBtn.classList.add('ready');
   }
+  const sk2=$('#b-skill2-cd'),sk2btn=$('#b-skill2'),sk2label=$('#b-skill2-n');
+  if(p.pw.skill2){
+    sk2btn.classList.remove('hidden');
+    if(p.pw.skill2.double && p.skill2FollowT>0){
+      sk2.classList.add('hidden'); sk2btn.classList.add('ready'); sk2label.textContent='二段';
+    } else if(p.skill2Cd>0){
+      sk2btn.classList.remove('ready'); sk2.classList.remove('hidden');
+      sk2.textContent=p.skill2Cd<1?p.skill2Cd.toFixed(2):Math.ceil(p.skill2Cd);
+      sk2label.textContent=p.pw.skill2.name;
+    } else {
+      sk2.classList.add('hidden'); sk2btn.classList.add('ready');
+      sk2label.textContent=p.pw.skill2.name;
+    }
+  } else { sk2btn.classList.add('hidden'); }
   if(p.ult<100){ ul.classList.remove('hidden'); ul.textContent = Math.floor(p.ult)+'%'; $('#b-ult').classList.remove('ready'); }
   else { ul.classList.add('hidden'); $('#b-ult').classList.add('ready'); }
 }
