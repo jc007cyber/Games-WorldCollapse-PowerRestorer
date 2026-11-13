@@ -931,7 +931,7 @@ function setupInput(){
   bindHold('#b-atk',  v=>Input.atk=v);
   bindTap('#b-dash',  ()=>Input.dashReq=true);
   bindTap('#b-skill', ()=>Input.skillReq=true);
-  bindTap('#b-skill2',()=>Input.skill2Req=true);
+  bindSecondSkillTap('#b-skill2');
   bindTap('#b-ult',   ()=>Input.ultReq=true);
   bindTap('#btn-pause',()=>togglePause());
   addEventListener('blur', clearInput);
@@ -964,6 +964,20 @@ function bindHold(sel, fn){
   el.addEventListener('touchcancel', up, {passive:false});
   el.addEventListener('mousedown', e=>{ e.preventDefault(); fn(true); });
   addEventListener('mouseup', ()=>fn(false));
+}
+function bindSecondSkillTap(sel){
+  const el=$(sel); if(!el) return;
+  let lastTouch=-Infinity;
+  el.addEventListener('touchstart', e=>{
+    e.preventDefault(); e.stopPropagation();
+    lastTouch=Date.now();
+    Input.skill2Req=true;
+  },{passive:false});
+  el.addEventListener('mousedown', e=>{
+    e.preventDefault(); e.stopPropagation();
+    // A synthesized mouse event following a touch must not consume stage two.
+    if(Date.now()-lastTouch>650) Input.skill2Req=true;
+  });
 }
 function bindTap(sel, fn){
   const el = $(sel); if(!el) return;
@@ -2763,8 +2777,11 @@ function tryUlt(p){
       flash('#35d6ff', .4); G.shake=22;
     }});
   } else if(id==='u_war'){
-    const reach=Math.hypot(G.arena.w,G.arena.h);
-    G.slashes.push({x:p.x,y:p.y-8,a:0,arc:TAU,r:Math.max(180,reach),t:0,dur:.55,color:'#ff7548'});
+    // Visual shockwave rings are local while the actual strike hits the full field.
+    for(const radius of [80,160,250,360]){
+      G.slashes.push({x:p.x,y:p.y-8,a:0,arc:TAU,r:radius,t:0,dur:.45+radius/1400,color:'#ff7548'});
+    }
+    burst(p.x,p.y-8,36,'#ffe0b0',220);
     for(const e of G.enemies){
       if(e.dead) continue;
       const dx=e.x-p.x,dy=e.y-p.y,dist=Math.hypot(dx,dy)||1;
