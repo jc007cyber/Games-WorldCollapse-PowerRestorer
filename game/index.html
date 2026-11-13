@@ -223,7 +223,7 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
     <section class="screen hidden" id="scr-power">
       <div class="topbar">
         <div class="sect-h" style="margin:0">选择权能<small>权能决定你的武器、攻击方式与专属技能体系</small></div>
-        <div style="color:var(--dim);font-size:clamp(10px,2.4vmin,13px);letter-spacing:.1em">1 / 2</div>
+        <div style="color:var(--dim);font-size:clamp(10px,2.4vmin,13px);letter-spacing:.1em">专属权能</div>
       </div>
       <div class="cardwrap" id="power-list"></div>
       <div class="detail power-detail" id="power-detail">选择一项权能以查看基础信息</div>
@@ -233,24 +233,11 @@ text-shadow:0 3px 0 #000,0 0 22px var(--accent-soft)}
         <button class="pxbtn primary" id="btn-power-next" disabled>确 认 权 能</button>
       </div>
     </section>
-    <section class="screen hidden" id="scr-ult">
-      <div class="topbar">
-        <div class="sect-h" style="margin:0">选择大招<small>大招独立于权能，通过战斗充能释放</small></div>
-        <div id="ult-screen-step" style="color:var(--dim);font-size:clamp(10px,2.4vmin,13px);letter-spacing:.1em">2 / 2</div>
-      </div>
-      <div class="cardwrap" id="ult-list"></div>
-      <div class="detail" id="ult-detail">选择一项大招以查看效果</div>
-      <div class="foot">
-        <button class="pxbtn ghost" id="btn-ult-back">返 回</button>
-        <button class="pxbtn primary" id="btn-ult-next" disabled>进 入 世 界</button>
-      </div>
-    </section>
     <section class="screen hidden" id="scr-map">
       <div class="topbar">
         <div class="sect-h" style="margin:0">世界故障图<small id="map-sub">点击故障点进入修复作战</small></div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:65%">
           <button class="pxbtn ghost" id="btn-change-power" style="padding:.45em .7em;font-size:clamp(9px,2.1vmin,12px);white-space:nowrap">更换英雄</button>
-          <button class="pxbtn ghost" id="btn-change-ult" style="padding:.45em .7em;font-size:clamp(9px,2.1vmin,12px);white-space:nowrap">更换大招</button>
           <button class="pxbtn ghost" id="btn-reset" style="padding:.45em .7em;font-size:clamp(9px,2.1vmin,12px);white-space:nowrap">重置存档</button>
         </div>
       </div>
@@ -435,7 +422,7 @@ const POWERS = [
   { id:'space', name:'空间之权', color:'#35d6ff', color2:'#0b6f96', metal:'#c8f6ff',
     weapon:'裂隙指环', tagline:'两点之间，不必路过中间',
     atk:{mode:'ranged', dmg:14, cd:.26, speed:420, r:3, life:.9, pierce:1},
-    passive:'空间弹体穿墙贯穿敌人、伤害 +50%；冲刺瞬移；空间闪避基础 75%，每只存活普通怪 +1.5%，有存活 Boss +15%；携带空间坍缩再 +15% 闪避（最高 100%）；携带时之终焉时自身造成的伤害额外 +100%；闪避免疫本次伤害与僵直',
+    passive:'空间弹体穿墙贯穿敌人、伤害 +50%；冲刺瞬移；空间闪避基础 75%，每只存活普通怪 +1.5%，有存活 Boss +15%；专属空间坍缩再 +15% 闪避（最高 100%）；闪避免疫本次伤害与僵直',
     skill:{ name:'空间折叠', duration:8, cooldown:25,
       desc:'瞬移距离翻倍，残影在原地爆裂造成范围伤害；期间移动速度提升。' },
     brief:'远程 · 位移 · 机动' },
@@ -476,9 +463,23 @@ const ULTS = [
     effect:'吸附聚怪 + 中心大爆' },
   { id:'u_void',  name:'虚无归零', color:'#b07bff', tag:'抹除',
     desc:'将一切归零：抹除全场弹幕，对所有敌人造成其最大生命百分比的真实伤害。',
-    effect:'清弹幕 + 最大生命 35% 真伤' }
+    effect:'清弹幕 + 最大生命 35% 真伤' },
+  { id:'u_war', name:'破军天崩', color:'#ff7548', tag:'震荡',
+    desc:'战锤震碎整片战场：对所有敌人造成重击、强力击退与 1 秒眩晕。',
+    effect:'全场重击 + 击退 + 1 秒眩晕' }
 ];
 const ULT_MAP = Object.fromEntries(ULTS.map(u=>[u.id,u]));
+// A hero's ultimate is fixed. Old saves keep their progress and their old
+// mixed-and-matched ultimate is silently mapped to the selected hero.
+const HERO_ULTIMATE = Object.freeze({
+  karma:'u_karma', time:'u_time', life:'u_life', fate:'u_fate',
+  order:'u_order', space:'u_space', void:'u_void', war:'u_war'
+});
+function fixedUltimateForPower(powerId){ return HERO_ULTIMATE[powerId] || HERO_ULTIMATE.karma; }
+function selectHero(powerId){
+  G.power=POWER_MAP[powerId]?powerId:POWERS[0].id;
+  G.ult=fixedUltimateForPower(G.power);
+}
 const LEVELS = [
   { id:'dust', name:'数据荒原', sub:'废弃服务器群 · 沙尘与断码', tint:'#2b3a5c', floor:'#1a2138',
     theme:'dust', mapNames:['边缘缓存区'], tier:'origin', chapter:'起点关卡', chapterShort:'起点',
@@ -2045,6 +2046,7 @@ function startLevel(id){
   G.replayCleared = Save.data.done.includes(id);
   G.partCount = L.parts; G.part = 0; G.map = null; G.transit = null;
   G.waveInPart = 0; G.wave = 0; G.key = null;
+  selectHero(G.power);
   G.player = makePlayer(G.power);
   G.kills=0; G.elapsed=0;
   G.orderEclipseT=0; G.orderEclipseBurnT=0;
@@ -2176,7 +2178,7 @@ function spawnEnemy(type, at){
     cool:rand(.4,1.6), hurt:0, burn:0, slow:0, weak:0, charging:0, chargeCd:rand(1,3),
     blinkCd:rand(1,2.5), aimX:0, aimY:1, touchCd:0, dead:false, pull:0, mark:0,
     orderFlameT:0, orderFlamePermanent:false, orderBurnT:0,
-    summonCd:rand(4,6), bossPhase:3 };
+    summonCd:rand(4,6), bossPhase:3, stun:0 };
   if(G.orderEclipseT>0) applyOrderFlame(e,0,true,G.orderEclipseBurnT||7);
   G.enemies.push(e);
   for(let i=0;i<8;i++) G.parts.push(mkPart(x, y-rand(0,10), T.color, {sp:rand(30,90), life:rand(.2,.5)}));
@@ -2575,6 +2577,17 @@ function tryUlt(p){
       G.slashes.push({x:cx, y:cy, a:0, arc:TAU, r:200, t:0, dur:.4, color:'#35d6ff'});
       flash('#35d6ff', .4); G.shake=22;
     }});
+  } else if(id==='u_war'){
+    const reach=Math.hypot(G.arena.w,G.arena.h);
+    G.slashes.push({x:p.x,y:p.y-8,a:0,arc:TAU,r:Math.max(180,reach),t:0,dur:.55,color:'#ff7548'});
+    for(const e of G.enemies){
+      if(e.dead) continue;
+      const dx=e.x-p.x,dy=e.y-p.y,dist=Math.hypot(dx,dy)||1;
+      damageEnemy(e,230*HERO_BALANCE.damageMul,{big:true});
+      e.stun=Math.max(e.stun||0,1);
+      e.vx+=dx/dist*320; e.vy+=dy/dist*320;
+    }
+    G.shake=25; flash('#ff7548',.65);
   } else if(id==='u_void'){
     G.bullets.length = 0;
     for(const e of G.enemies){ damageEnemy(e, e.hpMax*0.35, {big:true, trueDmg:true}); e.weak = Math.max(e.weak, 6); }
@@ -2771,6 +2784,7 @@ function updateEnemies(dt){
     e.hurt = Math.max(0, e.hurt-dt); e.burn = Math.max(0,e.burn-dt);
     e.slow = Math.max(0,e.slow-dt); e.weak = Math.max(0,e.weak-dt);
     e.touchCd -= dt*(orderFlameActive && !rangedEnemy ? .25 : 1);
+    e.stun=Math.max(0,(e.stun||0)-dt);
     if(e.burn>0){
       // Burn damage also follows the Time's End + Space Power damage bonus.
       if(spaceTimeDamageBonusActive()) damageEnemy(e,9*dt,{silent:true});
@@ -2782,7 +2796,7 @@ function updateEnemies(dt){
       const cx=G.arena.w/2, cy=G.arena.h/2, dx=cx-e.x, dy=cy-e.y, d=Math.hypot(dx,dy)||1;
       e.x += dx/d*260*dt; e.y += dy/d*260*dt;
     }
-    if(frozen){ resolveEnemyBlocks(e); continue; }
+    if(frozen || e.stun>0){ resolveEnemyBlocks(e); continue; }
     const inOrderDomain=G.zones.some(z=>z.kind==='order' && dist2(e.x,e.y,z.x,z.y)<z.r*z.r);
     const slowMul = Math.min(e.slow>0 ? .55 : 1, inOrderDomain ? .60 : 1);
     const dx = p.x-e.x, dy=(p.y-8)-(e.y-8), d = Math.hypot(dx,dy)||1;
@@ -3116,7 +3130,7 @@ function showScreen(name){
   $('#scr-result').classList.add('hidden');
   $('#scr-pause').classList.add('hidden');
   $('#hud').classList.toggle('hidden', name!=='battle');
-  const map = {title:'#scr-title', power:'#scr-power', ult:'#scr-ult', map:'#scr-map'};
+  const map = {title:'#scr-title', power:'#scr-power', map:'#scr-map'};
   if(map[name]) $(map[name]).classList.remove('hidden');
 }
 function togglePause(){
@@ -3176,8 +3190,6 @@ function worldCollapse(){
 }
 let powerReturnToMap = false;
 let powerBeforeMapChange = null;
-let ultReturnToMap = false;
-let ultBeforeMapChange = null;
 function buildPowerCards(){
   const wrap = $('#power-list'); wrap.innerHTML='';
   POWERS.forEach(P=>{
@@ -3190,7 +3202,7 @@ function buildPowerCards(){
     drawPowerGlyph(el.querySelector('canvas'), P);
     el.addEventListener('click', ()=>{
       $$('#power-list .pcard').forEach(c=>c.classList.remove('sel'));
-      el.classList.add('sel'); G.power = P.id;
+      el.classList.add('sel'); selectHero(P.id);
       document.documentElement.style.setProperty('--accent', P.color);
       document.documentElement.style.setProperty('--accent2', P.color2);
       document.documentElement.style.setProperty('--accent-soft', hexA(P.color,.22));
@@ -3202,10 +3214,13 @@ function buildPowerCards(){
            <div class="power-fact"><span>基础伤害</span><b>${P.atk.dmg}</b></div>
          </div>
          <div class="power-passive"><span>被动能力</span><b>${P.passive}</b></div>`;
+      const ownUlt=ULT_MAP[fixedUltimateForPower(P.id)];
       $('#skill-detail').innerHTML =
         `<div class="detail-title">专属技能</div>
-         <div class="skill-head"><b class="skill-name">${P.skill.name}</b><span class="skill-key">Q 技能</span></div>
-         <p class="skill-desc">${P.skill.desc}</p>`;
+         <div class="skill-head"><b class="skill-name">${P.skill.name}</b><span class="skill-key">Q 一技能</span></div>
+         <p class="skill-desc">${P.skill.desc}</p>
+         <div class="skill-head" style="margin-top:9px"><b class="skill-name">${ownUlt.name}</b><span class="skill-key">E 专属大招</span></div>
+         <p class="skill-desc">${ownUlt.desc}</p>`;
       $('#btn-power-next').disabled = false;
     });
     wrap.appendChild(el);
@@ -3241,41 +3256,6 @@ function hexA(hex,a){
   const n=parseInt(hex.slice(1),16);
   return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`;
 }
-function buildUltCards(){
-  const wrap=$('#ult-list'); wrap.innerHTML='';
-  $('#btn-ult-next').disabled=true;
-  ULTS.forEach(U=>{
-    const el=document.createElement('div');
-    el.className='pcard'; el.dataset.ultId=U.id;
-    el.style.setProperty('--pc',U.color); el.style.setProperty('--pc-soft',hexA(U.color,.25));
-    el.innerHTML = `<canvas class="glyph" width="48" height="48"></canvas>
-      <div><h3>${U.name}</h3><div class="tag">${U.tag} · ${U.effect}</div><p>${U.desc.slice(0,42)}…</p></div>
-      <div class="stat">ULT</div>`;
-    drawUltGlyph(el.querySelector('canvas'), U);
-    el.addEventListener('click', ()=>{
-      $$('#ult-list .pcard').forEach(c=>c.classList.remove('sel'));
-      el.classList.add('sel'); G.ult=U.id;
-      $('#ult-detail').innerHTML = `<b style="color:${U.color}">${U.name}</b> · ${U.tag}<br>${U.desc}`;
-      $('#btn-ult-next').disabled=false;
-    });
-    wrap.appendChild(el);
-  });
-  if(G.ult){
-    const selected=wrap.querySelector(`[data-ult-id="${G.ult}"]`);
-    if(selected) selected.click();
-  }
-}
-function drawUltGlyph(cv,U){
-  const g=cv.getContext('2d'); g.imageSmoothingEnabled=false;
-  g.fillStyle='#0b0a14'; g.fillRect(0,0,48,48);
-  const gr=g.createRadialGradient(24,24,2,24,24,24);
-  gr.addColorStop(0,U.color); gr.addColorStop(1,'rgba(0,0,0,0)');
-  g.fillStyle=gr; g.fillRect(0,0,48,48);
-  g.strokeStyle='#fff'; g.globalAlpha=.55;
-  for(let i=0;i<8;i++){ const a=i*TAU/8;
-    g.beginPath(); g.moveTo(24+Math.cos(a)*9,24+Math.sin(a)*9); g.lineTo(24+Math.cos(a)*20,24+Math.sin(a)*20); g.stroke(); }
-  g.globalAlpha=1; g.fillStyle='#fff'; g.fillRect(22,22,4,4);
-}
 function buildMap(){
   const d=Save.data, wrap=$('#mapwrap'), canvas=$('#mapcanvas'), svg=$('#mapsvg');
   canvas.querySelectorAll('.node').forEach(n=>n.remove());
@@ -3300,7 +3280,7 @@ function buildMap(){
     const zone = `${L.parts}图`;
     n.innerHTML=`<div class="dot"></div><div class="nm">${L.name}</div>`+
       `<div class="lv">${L.chapterShort} ${L.chIdx}/${L.chTotal} · ${zone}${L.finalBoss?' · 终极BOSS':L.boss?' · BOSS':''}</div>`;
-    if(isOpen) n.addEventListener('click', ()=>{ G.power=G.power||d.power; G.ult=G.ult||d.ult; startLevel(L.id); });
+    if(isOpen) n.addEventListener('click', ()=>{ selectHero(G.power||d.power); startLevel(L.id); });
     canvas.appendChild(n);
   });
   $('#map-stat').textContent = `已修复 ${d.done.length} / ${LEVELS.length}`;
@@ -3327,8 +3307,8 @@ function setupUI(){
   $('#btn-start').addEventListener('click', ()=>{
     const d=Save.data;
     if(d.done && d.done.length){
-      G.collapse = d.collapse==null ? 20 : d.collapse;
-      G.power = G.power || d.power; G.ult = G.ult || d.ult;
+      G.collapse=d.collapse==null?20:d.collapse;
+      if(d.power) selectHero(d.power);
     }
     showScreen('power'); buildPowerCards();
   });
@@ -3336,60 +3316,35 @@ function setupUI(){
     const d=Save.data;
     if(!d.power){
       if(!d.done || !d.done.length){ toast('暂无存档'); showScreen('power'); buildPowerCards(); return; }
-      d.power=POWERS[0].id; d.ult=d.ult||ULTS[0].id;
-      if(d.collapse==null) d.collapse=20;
-      Save.save();
+      d.power=POWERS[0].id;
     }
-    G.power=d.power; G.ult=d.ult||ULTS[0].id; G.collapse=d.collapse||20;
+    selectHero(d.power);
+    d.ult=G.ult;
+    if(d.collapse==null) d.collapse=20;
+    G.collapse=d.collapse;
+    Save.save();
     syncAccent(); buildMap(); showScreen('map');
   });
   $('#btn-power-back').addEventListener('click', ()=>{
     if(powerReturnToMap){
-      G.power=powerBeforeMapChange; powerReturnToMap=false; powerBeforeMapChange=null;
+      selectHero(powerBeforeMapChange);
+      powerReturnToMap=false; powerBeforeMapChange=null;
       syncAccent(); buildMap(); showScreen('map');
     } else showScreen('title');
   });
   $('#btn-power-next').addEventListener('click', ()=>{
     if(!G.power) return;
-    Save.data.power=G.power; Save.save();
-    if(powerReturnToMap){ powerReturnToMap=false; powerBeforeMapChange=null; syncAccent(); buildMap(); showScreen('map'); return; }
-    $('#ult-screen-step').textContent='2 / 2';
-    $('#btn-ult-back').textContent='返 回';
-    $('#btn-ult-next').textContent='进 入 世 界';
-    buildUltCards(); showScreen('ult');
-  });
-  $('#btn-ult-back').addEventListener('click', ()=>{
-    if(ultReturnToMap){
-      G.ult=ultBeforeMapChange;
-      ultReturnToMap=false; ultBeforeMapChange=null;
-      $('#ult-screen-step').textContent='2 / 2';
-      $('#btn-ult-back').textContent='返 回';
-      $('#btn-ult-next').textContent='进 入 世 界';
-      buildMap(); showScreen('map'); return;
-    }
-    showScreen('power');
-  });
-  $('#btn-ult-next').addEventListener('click', ()=>{
-    if(!G.ult) return;
+    selectHero(G.power);
+    Save.data.power=G.power;
     Save.data.ult=G.ult;
-    if(ultReturnToMap){
-      ultReturnToMap=false; ultBeforeMapChange=null;
-      Save.save(); buildMap(); showScreen('map'); return;
-    }
     if(!Save.data.done || !Save.data.done.length) Save.data.collapse=G.collapse;
     Save.save();
-    buildMap(); showScreen('map');
+    powerReturnToMap=false; powerBeforeMapChange=null;
+    syncAccent(); buildMap(); showScreen('map');
   });
   $('#btn-change-power').addEventListener('click', ()=>{
     powerReturnToMap=true; powerBeforeMapChange=G.power;
     buildPowerCards(); showScreen('power');
-  });
-  $('#btn-change-ult').addEventListener('click', ()=>{
-    ultReturnToMap=true; ultBeforeMapChange=G.ult;
-    $('#ult-screen-step').textContent='更换大招';
-    $('#btn-ult-back').textContent='取 消 更 换';
-    $('#btn-ult-next').textContent='确 认 更 换';
-    buildUltCards(); showScreen('ult');
   });
   $('#btn-reset').addEventListener('click', ()=>{
     if(confirm('确定重置存档？所有已修复的故障点将重新出现。')){ Save.reset(); G.power=null; G.ult=null; G.collapse=20; showScreen('title'); }
@@ -3418,9 +3373,9 @@ function loop(ts){
 }
 function boot(){
   setupCanvas(); setupInput(); setupUI(); bakeWeapons();
-  buildPowerCards(); buildUltCards();
+  buildPowerCards();
   const d=Save.data;
-  if(d.power){ G.power=d.power; G.ult=d.ult||ULTS[0].id; G.collapse=d.collapse||20; syncAccent(); }
+  if(d.power){ selectHero(d.power); G.collapse=d.collapse==null?20:d.collapse; syncAccent(); }
   $('#btn-continue').style.display = '';
   showScreen('title');
   requestAnimationFrame(loop);
